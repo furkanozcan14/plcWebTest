@@ -1,0 +1,24 @@
+{
+  "name": "plc-webtestbench-backend",
+  "version": "1.0.0",
+  "description": "Delta PLC Air Conditioning Web Test Bench - Backend Server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "modbus-serial": "^8.0.16",
+    "socket.io": "^4.7.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "author": "PLC Web Test Bench",
+  "license": "MIT",
+  "allowScripts": {
+    "@serialport/bindings-cpp@13.0.0": true
+  }
+}

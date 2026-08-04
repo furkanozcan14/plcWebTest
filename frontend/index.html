@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Delta PLC Tabanlı İklimlendirme Web Test Bench — Profesyonel SCADA/HMI Kontrol Paneli" />
+  <title>Delta PLC Web Test Bench</title>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css" />
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <!-- Socket.io Client -->
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     VIEW 1: LOGIN
+══════════════════════════════════════════════ -->
+<div id="view-login" class="view active">
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="logo-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#090C11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="7" width="20" height="14" rx="1"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
+        </svg>
+      </div>
+      <span class="brand-badge">PLC</span>
+      <div class="brand-sep"></div>
+      <span>Delta Web Test Bench</span>
+    </div>
+    <div class="topbar-right">
+      <button id="login-theme-btn" class="btn-theme" title="Tema Değiştir" aria-label="Tema değiştir">
+        <i data-lucide="sun" style="width:14px;height:14px;"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="login-container">
+    <div class="login-box fade-in">
+      <div class="login-header">
+        <div class="logo-row">
+          <div class="logo-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#090C11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="7" width="20" height="14" rx="1"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
+            </svg>
+          </div>
+          <h1>Delta PLC Web Test Bench<br/><span style="font-size:11px;font-weight:400;color:var(--text-secondary);">İklimlendirme Kontrol Sistemi v1.0</span></h1>
+        </div>
+        <p>SCADA/HMI — Modbus TCP / Ethernet</p>
+      </div>
+
+      <div class="login-body">
+        <div class="login-notice">
+          <i data-lucide="shield-check" style="width:13px;height:13px;flex-shrink:0;margin-top:1px;"></i>
+          <span>Yetkili operatör girişi gereklidir.<br/>Kullanıcı: <strong>admin</strong> / Şifre: <strong>plc2024</strong></span>
+        </div>
+
+        <form id="login-form" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="login-username">Kullanıcı Adı</label>
+            <input id="login-username" class="form-input" type="text" placeholder="admin" autocomplete="username" spellcheck="false" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="login-password">Şifre</label>
+            <input id="login-password" class="form-input" type="password" placeholder="••••••••" autocomplete="current-password" />
+            <div id="login-error" class="form-error">Kullanıcı adı veya şifre hatalı.</div>
+          </div>
+          <button type="submit" id="login-btn" class="btn-login">
+            Sisteme Giriş Yap
+          </button>
+        </form>
+      </div>
+
+      <div class="login-footer">
+        Modbus TCP — Delta DVP Serisi PLC — &copy; 2024
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     VIEW 2: KONFİGÜRASYON
+══════════════════════════════════════════════ -->
+<div id="view-config" class="view">
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="logo-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#090C11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="7" width="20" height="14" rx="1"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+        </svg>
+      </div>
+      <span class="brand-badge">PLC</span>
+      <div class="brand-sep"></div>
+      <span>Delta Web Test Bench</span>
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" id="nav-config">Konfigürasyon</button>
+      <button class="nav-tab" id="nav-testbench">Test Bench</button>
+    </div>
+    <div class="topbar-right">
+      <div class="status-led" id="config-status-led">
+        <div class="led-dot disconnected" id="config-led-dot"></div>
+        <span id="config-status-text">DISCONNECTED</span>
+      </div>
+      <button id="config-theme-btn" class="btn-theme" title="Tema Değiştir" aria-label="Tema değiştir">
+        <i data-lucide="sun" style="width:14px;height:14px;"></i>
+      </button>
+      <button id="config-logout-btn" class="btn btn-ghost btn-sm" title="Çıkış">
+        <i data-lucide="log-out" style="width:12px;height:12px;"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="config-container">
+    <!-- Bağlantı Paneli -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <i data-lucide="plug" style="width:13px;height:13px;color:var(--accent);"></i>
+          Modbus TCP Bağlantısı
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="conn-grid">
+          <div class="form-group">
+            <label class="form-label">PLC IP Adresi</label>
+            <div class="input-group">
+              <span class="input-group-prefix">IP</span>
+              <input id="cfg-ip" class="form-input" type="text" value="192.168.1.50" placeholder="192.168.1.50" spellcheck="false" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Port</label>
+            <div class="input-group">
+              <span class="input-group-prefix">:</span>
+              <input id="cfg-port" class="form-input" type="number" value="502" min="1" max="65535" placeholder="502" />
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;">
+          <i data-lucide="info" style="width:11px;height:11px;vertical-align:middle;"></i>
+          &nbsp;Delta DVP serisi PLC, Modbus TCP Slave modunda çalışmalıdır. Bağlantı zaman aşımı: 1500ms.
+        </div>
+
+        <div class="conn-actions">
+          <button id="btn-connect-plc" class="btn btn-accent">
+            <i data-lucide="plug" style="width:12px;height:12px;"></i>
+            PLC Bağlan
+          </button>
+          <button id="btn-connect-sim" class="btn btn-sim">
+            <i data-lucide="cpu" style="width:12px;height:12px;"></i>
+            Simülasyon
+          </button>
+          <button id="btn-disconnect" class="btn btn-danger" disabled>
+            <i data-lucide="unplug" style="width:12px;height:12px;"></i>
+            Bağlantıyı Kes
+          </button>
+          <button id="btn-goto-testbench" class="btn btn-ghost">
+            <i data-lucide="activity" style="width:12px;height:12px;"></i>
+            Test Bench →
+          </button>
+        </div>
+
+        <div id="conn-message" style="margin-top:10px;font-size:12px;font-family:var(--font-mono);display:none;padding:6px 10px;border-radius:var(--radius-sm);"></div>
+      </div>
+    </div>
+
+    <!-- Bilgi Paneli -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <i data-lucide="book-open" style="width:13px;height:13px;color:var(--accent);"></i>
+          Adres Haritası & Protokol
+        </div>
+      </div>
+      <div class="panel-body" style="font-size:12px;line-height:1.8;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="color:var(--text-secondary);width:40%;padding:3px 0;">Protokol</td>
+            <td style="font-family:var(--font-mono);color:var(--text-primary);">Modbus TCP</td>
+          </tr>
+          <tr>
+            <td style="color:var(--text-secondary);padding:3px 0;">Slave ID</td>
+            <td style="font-family:var(--font-mono);color:var(--accent);">1</td>
+          </tr>
+          <tr>
+            <td style="color:var(--text-secondary);padding:3px 0;">D Register (FC3/16)</td>
+            <td style="font-family:var(--font-mono);color:var(--text-primary);">40001+ (D0=0)</td>
+          </tr>
+          <tr>
+            <td style="color:var(--text-secondary);padding:3px 0;">M Relay (FC1/5)</td>
+            <td style="font-family:var(--font-mono);color:var(--text-primary);">Coil 0+ (M0=0)</td>
+          </tr>
+          <tr>
+            <td style="color:var(--text-secondary);padding:3px 0;">Timeout</td>
+            <td style="font-family:var(--font-mono);color:var(--red);">1500 ms</td>
+          </tr>
+          <tr>
+            <td style="color:var(--text-secondary);padding:3px 0;">Polling</td>
+            <td style="font-family:var(--font-mono);color:var(--green);">200 ms</td>
+          </tr>
+          <tr>
+            <td style="color:var(--text-secondary);padding:3px 0;">Auto-Reconnect</td>
+            <td style="font-family:var(--font-mono);color:var(--green);">3 s</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tag Tablosu -->
+    <div class="panel full-span">
+      <div class="panel-header">
+        <div class="panel-title">
+          <i data-lucide="table" style="width:13px;height:13px;color:var(--accent);"></i>
+          Delta PLC Değişken Eşleme Tablosu
+        </div>
+        <span style="font-size:11px;color:var(--text-muted);" id="tag-count">4 değişken</span>
+      </div>
+      <div class="panel-body" style="padding:0;">
+        <table class="tag-table" id="tag-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Değişken Adı</th>
+              <th>Tip</th>
+              <th>Adres</th>
+              <th>Birim</th>
+              <th>İşlem</th>
+            </tr>
+          </thead>
+          <tbody id="tag-tbody">
+            <!-- JS tarafından doldurulur -->
+          </tbody>
+        </table>
+
+        <!-- Yeni Tag Formu -->
+        <div style="padding:10px 14px;border-top:1px solid var(--border);">
+          <div class="add-tag-form">
+            <div>
+              <label class="form-label">Değişken Adı</label>
+              <input id="new-tag-name" class="form-input" type="text" placeholder="Örn: Kompresör Sıcaklığı" />
+            </div>
+            <div>
+              <label class="form-label">Tip</label>
+              <select id="new-tag-type" class="form-input">
+                <option value="register">Register (D)</option>
+                <option value="coil">Coil (M)</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Adres</label>
+              <input id="new-tag-address" class="form-input" type="number" placeholder="Örn: 106" min="0" />
+            </div>
+            <div>
+              <label class="form-label">Birim</label>
+              <input id="new-tag-unit" class="form-input" type="text" placeholder="°C / bar / RPM" />
+            </div>
+            <div style="display:flex;align-items:flex-end;">
+              <button id="btn-add-tag" class="btn btn-accent">
+                <i data-lucide="plus" style="width:12px;height:12px;"></i>
+                Ekle
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     VIEW 3: CANLI TEST BENCH
+══════════════════════════════════════════════ -->
+<div id="view-testbench" class="view">
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="logo-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#090C11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="7" width="20" height="14" rx="1"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+        </svg>
+      </div>
+      <span class="brand-badge">PLC</span>
+      <div class="brand-sep"></div>
+      <span>Canlı Test Bench</span>
+    </div>
+
+    <div class="nav-tabs">
+      <button class="nav-tab" id="tb-nav-config">Konfigürasyon</button>
+      <button class="nav-tab active" id="tb-nav-testbench">Test Bench</button>
+    </div>
+
+    <div class="topbar-right">
+      <!-- Simülasyon badge -->
+      <div id="sim-badge" class="sim-badge" style="display:none;">
+        <i data-lucide="cpu" style="width:10px;height:10px;"></i> SIM
+      </div>
+
+      <!-- Status LED -->
+      <div class="status-led">
+        <div class="led-dot disconnected" id="tb-led-dot"></div>
+        <span id="tb-status-text">DISCONNECTED</span>
+      </div>
+
+      <!-- Master START/STOP Toggle -->
+      <button id="btn-master-toggle" class="btn-master start" aria-label="Sistemi başlat">
+        <i data-lucide="play" style="width:13px;height:13px;"></i>
+        <span id="master-btn-label">START</span>
+      </button>
+
+      <!-- Theme -->
+      <button id="tb-theme-btn" class="btn-theme" title="Tema Değiştir" aria-label="Tema değiştir">
+        <i data-lucide="sun" style="width:14px;height:14px;"></i>
+      </button>
+
+      <!-- Logout -->
+      <button id="tb-logout-btn" class="btn btn-ghost btn-sm">
+        <i data-lucide="log-out" style="width:12px;height:12px;"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="testbench-container">
+    <div class="testbench-body">
+      <!-- Tag Cards -->
+      <div class="cards-grid" id="cards-grid">
+        <!-- JS tarafından doldurulur -->
+      </div>
+    </div>
+
+    <!-- Live Console -->
+    <div class="console-panel">
+      <div class="console-header">
+        <div class="console-title">
+          <div class="console-dot"></div>
+          PLC Modbus TCP Log Konsolu
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span id="console-count" style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);">0 satır</span>
+          <button id="btn-clear-console" class="btn btn-ghost btn-sm">
+            <i data-lucide="trash-2" style="width:11px;height:11px;"></i> Temizle
+          </button>
+        </div>
+      </div>
+      <div class="console-body" id="console-body">
+        <div class="log-line">
+          <span class="log-ts">--:--:--</span>
+          <span class="log-msg info">Sistem hazır. Konfigürasyon sayfasından PLC'ye bağlanın.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="js/app.js"></script>
+<script src="js/login.js"></script>
+<script src="js/config.js"></script>
+<script src="js/testbench.js"></script>
+
+<script>
+  // Initialize Lucide icons after DOM ready
+  document.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+  });
+</script>
+
+</body>
+</html>
