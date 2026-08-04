@@ -14,6 +14,11 @@ let tbState = {
   MAX_LOG_LINES:  200,
 };
 
+// ─── Chart.js State ───────────────────────────────────────────────────────────
+let trendChart = null;
+const MAX_CHART_POINTS = 600; // 2 minutes at 200ms polling = 600 points. Let's say 1 point per second to not overload (120 points).
+let lastChartUpdate = 0;
+
 // ─── Değer formatlama (SKILL.md Faz 1: FLOAT32 → 2 ondalık) ─────────────────
 /**
  * Tag'in veri tipine göre görüntülenecek değeri formatlar.
@@ -480,6 +485,8 @@ document.addEventListener('DOMContentLoaded', () => {
       updateTbStatus(tbState.status);
       updateMasterButton(tbState.running);
       if (tbState.tags.length > 0) { renderCards(tbState.tags); lucide.createIcons(); }
+      
+      initLiveChart();
     })
     .catch(() => consoleLog('[ERR] Sunucudan durum alınamadı. Backend çalışıyor mu?'));
 
@@ -497,6 +504,8 @@ function bindSocketEvents(socket) {
       tbState.running        = data.running !== undefined ? data.running : tbState.running;
       renderCards(data.tags);
       updateTbStatus(data.status || tbState.status);
+      
+      updateLiveChart(data.tags);
     }
   });
 
@@ -510,4 +519,93 @@ function bindSocketEvents(socket) {
   });
 
   consoleLog('[WS] WebSocket bağlantısı kuruldu — Canlı veri akışı başladı.');
+}
+
+// ─── Chart.js (Canlı Trend Grafiği) ──────────────────────────────────────────
+function initLiveChart() {
+  const ctx = document.getElementById('live-trend-chart');
+  if (!ctx) return;
+
+  Chart.defaults.color = '#757B81';
+  Chart.defaults.font.family = 'JetBrains Mono, monospace';
+
+  trendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: 'D100 - Evap Sıcaklığı (°C)',
+          borderColor: '#FFD300',
+          backgroundColor: 'rgba(255, 211, 0, 0.1)',
+          borderWidth: 2,
+          pointRadius: 0,
+          data: [],
+          tension: 0.3,
+          fill: true
+        },
+        {
+          label: 'D102 - Komp Basıncı (bar)',
+          borderColor: '#10B981',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          borderWidth: 2,
+          pointRadius: 0,
+          data: [],
+          tension: 0.3,
+          fill: true
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { intersect: false, mode: 'index' },
+      scales: {
+        x: {
+          display: true,
+          grid: { color: 'rgba(117, 123, 129, 0.1)' }
+        },
+        y: {
+          display: true,
+          grid: { color: 'rgba(117, 123, 129, 0.1)' },
+          suggestedMin: 0,
+          suggestedMax: 50
+        }
+      },
+      plugins: {
+        legend: { labels: { usePointStyle: true, boxWidth: 6 } }
+      }
+    }
+  });
+}
+
+function updateLiveChart(tags) {
+  if (!trendChart) return;
+  
+  const now = Date.now();
+  // Saniyede bir kez grafik güncelleyelim, 200ms çok hızlı
+  if (now - lastChartUpdate < 1000) return;
+  lastChartUpdate = now;
+
+  const t100 = tags.find(t => t.address === 100 && t.type === 'register');
+  const t102 = tags.find(t => t.address === 102 && t.type === 'register');
+
+  const val100 = t100 ? parseFloat(t100.value) : 0;
+  const val102 = t102 ? parseFloat(t102.value) : 0;
+
+  const timeStr = new Date().toLocaleTimeString('tr-TR', { hour12: false });
+  
+  trendChart.data.labels.push(timeStr);
+  trendChart.data.datasets[0].data.push(val100);
+  trendChart.data.datasets[1].data.push(val102);
+
+  // 2 dakika = 120 saniye (nokta)
+  if (trendChart.data.labels.length > 120) {
+    trendChart.data.labels.shift();
+    trendChart.data.datasets[0].data.shift();
+    trendChart.data.datasets[1].data.shift();
+  }
+
+  trendChart.update();
 }

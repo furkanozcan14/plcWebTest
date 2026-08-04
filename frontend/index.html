@@ -12,6 +12,9 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <!-- Socket.io Client -->
   <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -350,6 +353,17 @@
       <!-- Tag Cards -->
       <div class="cards-grid" id="cards-grid">
         <!-- JS tarafından doldurulur -->
+      </div>
+
+      <!-- Faz 2: Canlı Trend Grafiği -->
+      <div class="chart-panel">
+        <div class="chart-header">
+          <i data-lucide="trending-up" style="width:14px;height:14px;color:var(--accent);"></i>
+          <span style="font-weight:600;font-size:12px;">Canlı Trend Grafiği (Son 2 Dakika)</span>
+        </div>
+        <div class="chart-container" style="position: relative; height:200px; width:100%;">
+          <canvas id="live-trend-chart"></canvas>
+        </div>
       </div>
     </div>
 

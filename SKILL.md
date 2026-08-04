@@ -58,3 +58,18 @@ Uygulama 3 ana görünümden (SPA - Single Page Application) oluşur:
   - Konfigürasyon ekranında her tag için isteğe bağlı veya zorunlu Min ve Max değer sınırları tanımlanabilmelidir.
   - **Frontend Clamping:** Kullanıcı tanımlı Min/Max sınırları dışında bir değer girdiğinde frontend uyaracak ve değeri otomatik olarak izin verilen Min veya Max sınırına sabitleyecektir (clamp).
   - **Backend Fail-Safe Clamping:** Backend `modbusClient.js` gelen değeri PLC'ye yazmadan önce tekrar Min/Max kontrolünden geçirmeli; sınır dışı değerleri güvenli limite çekip konsola `[WARNING] Tag sınırı aşıldı, değere çekildi` uyarısı basmalıdır.
+
+
+  ## 6. Faz 2: Performans, Veri Kalıcılığı ve Canlı Trend Grafikleri
+- **Read Bundling (Toplu Okuma):** `modbusClient.js` içinde ardışık veya yakın PLC adresleri tek bir `readHoldingRegisters` çağrısı ile toplu okunmalı, Modbus paket trafiği optimize edilmelidir.
+- **Kalıcı Konfigürasyon (Persistence):** IP/Port ve Tag tanımlamaları sunucu tarafında bir JSON dosyasında (`config.json`) saklanmalı; sunucu yeniden başlatıldığında mevcut yapı korunmalıdır.
+- **Canlı Trend Grafiği (Chart.js):** Test Bench ekranında seçilen register'ların (Sıcaklık/Basınç) son 1-5 dakikalık zamansal değişimini gösteren hafif bir canlı çizgi grafik (Live Chart) yer almalıdır.
+
+
+## 7. Otomatik Dökümantasyon ve Rapor Güncelleme Kuralı
+- **Proje Raporu Senkronizasyonu:** Uygulamada yapılan her yeni geliştirme, mimari değişiklik, eklenen yeni fonksiyonellik veya refactor işleminden sonra `PROJECT_REPORT.md` dosyası OTOMATİK olarak güncellenmelidir.
+- Güncellenecek Alanlar:
+  - Eklenen yeni teknoloji veya kütüphaneler (Teknoloji Yığını bölümü).
+  - Yapılan performans optimizasyonları ve güvenlik önlemleri.
+  - Değişen veya eklenen REST API ve Socket.io event'leri.
+  - Sürüm versiyonu ve son güncelleme tarihi.

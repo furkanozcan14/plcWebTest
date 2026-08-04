@@ -1,22 +1,27 @@
 /**
- * server.js — Faz 1 Refactor
+ * server.js — Faz 2
  * Delta PLC Web Test Bench — Ana Sunucu
  * Express HTTP + Socket.io WebSocket + Modbus TCP polling
- * Faz 1: dataType (FLOAT32/INT16/UINT16/COIL), min/max clamping desteği
+ *
+ * Faz 2 yenilikleri:
+ *   - configStore.js ile kalıcı konfigürasyon (config.json)
+ *   - Polling: modbusClient.readAllTags() — Read Bundling optimizasyonu
  */
 
-const express = require('express');
-const http = require('http');
+const express  = require('express');
+const http     = require('http');
 const { Server } = require('socket.io');
-const cors = require('cors');
-const path = require('path');
-const ModbusClient = require('./modbusClient');
-const FailSafeManager = require('./failSafe');
+const cors     = require('cors');
+const path     = require('path');
+
+const { ModbusClient } = require('./modbusClient');
+const FailSafeManager  = require('./failSafe');
+const { loadConfig, saveConfig } = require('./configStore');
 
 // ─── App Setup ───────────────────────────────────────────────────────────────
-const app = express();
+const app    = express();
 const server = http.createServer(app);
-const io = new Server(server, {
+const io     = new Server(server, {
   cors: { origin: '*', methods: ['GET', 'POST'] }
 });
 
@@ -24,56 +29,26 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
-const PORT = 3000;
+const PORT            = 3000;
 const POLL_INTERVAL_MS = 200;
 
-// ─── Varsayılan Tag Listesi (Faz 1: dataType, min, max alanlarıyla) ──────────
-const DEFAULT_TAGS = [
-  {
-    id: 1, name: 'Evaporatör Sıcaklığı',
-    type: 'register', dataType: 'FLOAT32',
-    address: 100, unit: '°C',
-    min: -50, max: 150,
-    value: 0
-  },
-  {
-    id: 2, name: 'Kompresör Basıncı',
-    type: 'register', dataType: 'INT16',
-    address: 102, unit: 'bar',
-    min: 0, max: 50,
-    value: 0
-  },
-  {
-    id: 3, name: 'Sıvı Vana Durumu',
-    type: 'coil', dataType: 'COIL',
-    address: 10, unit: '',
-    min: undefined, max: undefined,
-    value: 0
-  },
-  {
-    id: 4, name: 'Fan Hızı',
-    type: 'register', dataType: 'UINT16',
-    address: 104, unit: 'RPM',
-    min: 0, max: 3000,
-    value: 0
-  },
-];
+// ─── Kalıcı Konfigürasyonu Yükle ─────────────────────────────────────────────
+const savedCfg = loadConfig();
 
-// ─── State ────────────────────────────────────────────────────────────────────
 let plcState = {
-  status: 'DISCONNECTED',
-  ip: '192.168.1.50',
-  port: 502,
+  status:         'DISCONNECTED',
+  ip:             savedCfg.ip   || '192.168.1.50',
+  port:           savedCfg.port || 502,
   simulationMode: false,
-  running: false,
-  tags: JSON.parse(JSON.stringify(DEFAULT_TAGS)), // deep copy
-  nextTagId: 5,
-  simValues: {}
+  running:        false,
+  tags:           savedCfg.tags || [],
+  nextTagId:      savedCfg.nextTagId || 5,
+  simValues:      {}
 };
 
 // ─── Log ──────────────────────────────────────────────────────────────────────
 function broadcastLog(msg) {
-  const ts = new Date().toLocaleTimeString('tr-TR', { hour12: false });
+  const ts    = new Date().toLocaleTimeString('tr-TR', { hour12: false });
   const entry = `[${ts}] ${msg}`;
   console.log(entry);
   io.emit('plc:log', { message: entry, timestamp: new Date().toISOString() });
@@ -81,30 +56,45 @@ function broadcastLog(msg) {
 
 // ─── Modbus & FailSafe ────────────────────────────────────────────────────────
 const modbusClient = new ModbusClient(broadcastLog);
-const failSafe = new FailSafeManager(modbusClient, io, broadcastLog);
+const failSafe     = new FailSafeManager(modbusClient, io, broadcastLog);
+
+// ─── Konfigürasyon Kaydet (tag ekleme/silme sonrası çağrılır) ─────────────────
+function persistConfig() {
+  saveConfig({
+    ip:        plcState.ip,
+    port:      plcState.port,
+    nextTagId: plcState.nextTagId,
+    tags:      plcState.tags
+  });
+}
 
 // ─── Simülasyon ───────────────────────────────────────────────────────────────
+function clamp(val, min, max) {
+  if (min !== undefined && val < min) return min;
+  if (max !== undefined && val > max) return max;
+  return val;
+}
+
 function initSimValues() {
   plcState.simValues = {};
   for (const tag of plcState.tags) {
-    const dt = (tag.dataType || 'UINT16').toUpperCase();
     if (tag.type === 'coil') {
-      plcState.simValues[tag.id] = 0;
-    } else if (dt === 'FLOAT32') {
-      // Evaporatör için gerçekçi başlangıç
-      plcState.simValues[tag.id] = tag.address === 100 ? 18.5 : 0.0;
+      plcState.simValues[tag.id] = tag.value ?? 0;
+      continue;
+    }
+    const dt = (tag.dataType || 'UINT16').toUpperCase();
+    if (dt === 'FLOAT32') {
+      // Tag'in min/max aralığının ortasından başla
+      const mid = (tag.min !== undefined && tag.max !== undefined)
+        ? (tag.min + tag.max) / 2
+        : (tag.address === 100 ? 18.5 : 0.0);
+      plcState.simValues[tag.id] = mid;
     } else if (dt === 'INT16') {
       plcState.simValues[tag.id] = tag.address === 102 ? 12 : 0;
     } else {
       plcState.simValues[tag.id] = tag.address === 104 ? 1450 : 0;
     }
   }
-}
-
-function clamp(val, min, max) {
-  if (min !== undefined && val < min) return min;
-  if (max !== undefined && val > max) return max;
-  return val;
 }
 
 function updateSimValues() {
@@ -114,27 +104,25 @@ function updateSimValues() {
     let current = plcState.simValues[tag.id] ?? 0;
 
     if (dt === 'FLOAT32') {
-      // FLOAT32: ondalıklı dalgalanma
       current += (Math.random() - 0.5) * 0.3;
-      current = clamp(current, tag.min ?? -50, tag.max ?? 150);
+      current  = clamp(current, tag.min ?? -9999, tag.max ?? 9999);
       plcState.simValues[tag.id] = current;
-      tag.value = current; // float, toFixed frontend'de yapılacak
+      tag.value = current;
     } else if (dt === 'INT16') {
       current += Math.round((Math.random() - 0.5) * 2);
-      current = clamp(current, tag.min ?? -32768, tag.max ?? 32767);
+      current  = clamp(current, tag.min ?? -32768, tag.max ?? 32767);
       plcState.simValues[tag.id] = current;
       tag.value = Math.round(current);
     } else {
-      // UINT16
       current += Math.round((Math.random() - 0.5) * 10);
-      current = clamp(current, tag.min ?? 0, tag.max ?? 65535);
+      current  = clamp(current, tag.min ?? 0, tag.max ?? 65535);
       plcState.simValues[tag.id] = current;
       tag.value = Math.round(current);
     }
   }
 }
 
-// ─── Tag serileştirme (Socket.io'ya gönderilecek alan seti) ──────────────────
+// ─── Tag serileştirme ─────────────────────────────────────────────────────────
 function serializeTag(t) {
   return {
     id:       t.id,
@@ -158,9 +146,9 @@ async function pollPlc() {
   if (plcState.simulationMode) {
     updateSimValues();
     io.emit('plc:data', {
-      tags: plcState.tags.map(serializeTag),
-      status: plcState.status,
-      running: plcState.running,
+      tags:           plcState.tags.map(serializeTag),
+      status:         plcState.status,
+      running:        plcState.running,
       simulationMode: true
     });
     return;
@@ -175,27 +163,30 @@ async function pollPlc() {
     return;
   }
 
-  for (const tag of plcState.tags) {
-    try {
-      // Faz 1: readTagValue kullan — dataType'a göre doğru FC seçer
-      const result = await modbusClient.readTagValue(tag);
+  // ── Faz 2: readAllTags — Read Bundling ile tek seferde toplu okuma ─────────
+  try {
+    const results = await modbusClient.readAllTags(plcState.tags);
 
-      if (result.success) {
-        tag.value = result.value;
-      } else if (result.error === 'NOT_CONNECTED') {
+    for (const res of results) {
+      if (res.success) {
+        const tag = plcState.tags.find(t => t.id === res.id);
+        if (tag) tag.value = res.value;
+      } else if (res.error === 'NOT_CONNECTED') {
         plcState.status = 'DISCONNECTED';
         if (!failSafe.isReconnecting) failSafe.startReconnect(plcState.ip, plcState.port);
-        break;
+        // Bağlantı koptu, bu polling iterasyonunu bitir
+        io.emit('plc:status', { status: 'DISCONNECTED' });
+        return;
       }
-    } catch (err) {
-      broadcastLog(`[ERR_POLL] "${tag.name}" polling hatası: ${err.message}`);
     }
+  } catch (err) {
+    broadcastLog(`[ERR_POLL] Toplu okuma hatası: ${err.message}`);
   }
 
   io.emit('plc:data', {
-    tags: plcState.tags.map(serializeTag),
-    status: plcState.status,
-    running: plcState.running,
+    tags:           plcState.tags.map(serializeTag),
+    status:         plcState.status,
+    running:        plcState.running,
     simulationMode: false
   });
 }
@@ -203,7 +194,7 @@ async function pollPlc() {
 function startPolling() {
   if (pollTimer) clearInterval(pollTimer);
   pollTimer = setInterval(pollPlc, POLL_INTERVAL_MS);
-  broadcastLog(`[POLLING] Başlatıldı — ${POLL_INTERVAL_MS}ms aralık`);
+  broadcastLog(`[POLLING] Başlatıldı — ${POLL_INTERVAL_MS}ms aralık (Read Bundling aktif)`);
 }
 
 function stopPolling() {
@@ -221,15 +212,17 @@ app.post('/api/connect', async (req, res) => {
     plcState.port = parseInt(port, 10) || 502;
 
     if (tags && Array.isArray(tags)) {
-      // Gelen tag'lerde dataType/min/max alanlarını normalize et
       plcState.tags = tags.map(t => ({
         ...t,
         dataType: (t.dataType || 'UINT16').toUpperCase(),
-        min: t.min !== undefined ? parseFloat(t.min) : undefined,
-        max: t.max !== undefined ? parseFloat(t.max) : undefined,
+        min:   t.min  !== undefined ? parseFloat(t.min)  : undefined,
+        max:   t.max  !== undefined ? parseFloat(t.max)  : undefined,
         value: t.value ?? 0
       }));
     }
+
+    // IP/Port değişimini kalıcı kaydet
+    persistConfig();
 
     if (simulation) {
       plcState.simulationMode = true;
@@ -262,7 +255,7 @@ app.post('/api/disconnect', async (req, res) => {
   try {
     failSafe.cancelReconnect();
     await modbusClient.disconnect();
-    plcState.status = 'DISCONNECTED';
+    plcState.status         = 'DISCONNECTED';
     plcState.simulationMode = false;
     res.json({ success: true });
   } catch (err) {
@@ -271,92 +264,55 @@ app.post('/api/disconnect', async (req, res) => {
   }
 });
 
-// ─── Register / Coil yaz (Faz 1: tag id bazlı, dataType + clamping) ──────────
+// Register yaz
 app.post('/api/write', async (req, res) => {
   try {
-    const { tagId, address, value, dataType } = req.body;
+    const { tagId, address, value } = req.body;
 
-    // Tag'i bul: tagId varsa id ile, yoksa address + type ile
     let tag = tagId
       ? plcState.tags.find(t => t.id === parseInt(tagId, 10))
       : plcState.tags.find(t => t.type === 'register' && t.address === parseInt(address, 10));
 
-    if (!tag) {
-      return res.status(404).json({ success: false, error: 'Tag bulunamadı.' });
-    }
-
-    if (value === undefined || value === null) {
-      return res.status(400).json({ success: false, error: 'value gerekli.' });
-    }
+    if (!tag) return res.status(404).json({ success: false, error: 'Tag bulunamadı.' });
+    if (value === undefined || value === null) return res.status(400).json({ success: false, error: 'value gerekli.' });
 
     if (plcState.simulationMode) {
-      // Simülasyon: frontend clamping sonrası gelir ama backend'de de kontrol et
       let numVal = parseFloat(value);
-      if (isNaN(numVal)) {
-        broadcastLog(`[ERR_VALIDATION] "${tag.name}" geçersiz değer: ${value}`);
-        return res.status(400).json({ success: false, error: 'VALIDATION_ERROR' });
-      }
-      // Backend clamp
-      if (tag.min !== undefined && numVal < tag.min) {
-        broadcastLog(`[WARNING] "${tag.name}" sınırı aşıldı: ${numVal} → ${tag.min}'e çekildi`);
-        numVal = tag.min;
-      }
-      if (tag.max !== undefined && numVal > tag.max) {
-        broadcastLog(`[WARNING] "${tag.name}" sınırı aşıldı: ${numVal} → ${tag.max}'e çekildi`);
-        numVal = tag.max;
-      }
-
+      if (isNaN(numVal)) { broadcastLog(`[ERR_VALIDATION] "${tag.name}" geçersiz değer: ${value}`); return res.status(400).json({ success: false, error: 'VALIDATION_ERROR' }); }
+      if (tag.min !== undefined && numVal < tag.min) { broadcastLog(`[WARNING] "${tag.name}" sınırı aşıldı: ${numVal} → ${tag.min}'e çekildi`); numVal = tag.min; }
+      if (tag.max !== undefined && numVal > tag.max) { broadcastLog(`[WARNING] "${tag.name}" sınırı aşıldı: ${numVal} → ${tag.max}'e çekildi`); numVal = tag.max; }
       tag.value = numVal;
       plcState.simValues[tag.id] = numVal;
-
-      const dtLabel = (tag.dataType || 'UINT16').toUpperCase();
-      const addrLabel = `D${tag.address}`;
-      broadcastLog(`[WRITE SUCCESS] ${addrLabel} (${dtLabel}) set to ${numVal} (SIM)`);
+      broadcastLog(`[WRITE SUCCESS] D${tag.address} (${tag.dataType}) set to ${numVal} (SIM)`);
       return res.json({ success: true, value: numVal });
     }
 
-    // Gerçek PLC yazma: writeTagValue tüm tip mantığını ve clamping'i içerir
     const result = await modbusClient.writeTagValue(tag, value);
-    if (result.success) {
-      tag.value = result.value;
-      res.json({ success: true, value: result.value });
-    } else {
-      res.status(500).json({ success: false, error: result.error });
-    }
+    if (result.success) { tag.value = result.value; res.json({ success: true, value: result.value }); }
+    else res.status(500).json({ success: false, error: result.error });
   } catch (err) {
     broadcastLog(`[ERR] /api/write → ${err.message}`);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Coil yaz (M relay) — ayrı endpoint korunuyor
+// Coil yaz
 app.post('/api/coil', async (req, res) => {
   try {
     const { tagId, address, value } = req.body;
-
     let tag = tagId
       ? plcState.tags.find(t => t.id === parseInt(tagId, 10))
       : plcState.tags.find(t => t.type === 'coil' && t.address === parseInt(address, 10));
-
-    if (!tag) {
-      return res.status(404).json({ success: false, error: 'Coil tag bulunamadı.' });
-    }
-
+    if (!tag) return res.status(404).json({ success: false, error: 'Coil tag bulunamadı.' });
     const boolVal = value === true || value === 1 || value === '1' || value === 'true';
-
     if (plcState.simulationMode) {
       tag.value = boolVal ? 1 : 0;
       broadcastLog(`[COIL WRITE] M${tag.address} → ${boolVal ? 'ON (1)' : 'OFF (0)'} (SIM)`);
       return res.json({ success: true, value: tag.value });
     }
-
     const result = await modbusClient.writeTagValue(tag, boolVal);
-    if (result.success) {
-      tag.value = result.value;
-      res.json({ success: true, value: result.value });
-    } else {
-      res.status(500).json({ success: false, error: result.error });
-    }
+    if (result.success) { tag.value = result.value; res.json({ success: true, value: result.value }); }
+    else res.status(500).json({ success: false, error: result.error });
   } catch (err) {
     broadcastLog(`[ERR] /api/coil → ${err.message}`);
     res.status(500).json({ success: false, error: err.message });
@@ -397,7 +353,7 @@ app.post('/api/stop', async (req, res) => {
   }
 });
 
-// Tag ekle (Faz 1: dataType, min, max alanlarıyla)
+// Tag ekle — Faz 2: persistConfig çağrısı eklendi
 app.post('/api/tags', (req, res) => {
   try {
     const { name, type, dataType, address, unit, min, max } = req.body;
@@ -407,8 +363,7 @@ app.post('/api/tags', (req, res) => {
     const dt = (dataType || (type === 'coil' ? 'COIL' : 'UINT16')).toUpperCase();
     const newTag = {
       id:       plcState.nextTagId++,
-      name,
-      type,
+      name, type,
       dataType: dt,
       address:  parseInt(address, 10),
       unit:     unit || '',
@@ -417,28 +372,36 @@ app.post('/api/tags', (req, res) => {
       value:    0
     };
     plcState.tags.push(newTag);
-    broadcastLog(`[CONFIG] Tag eklendi: ${name} (${dt} @ ${type === 'coil' ? 'M' : 'D'}${address})`);
+
+    // ── Faz 2: kalıcı kaydet ──────────────────────────────────────────────
+    persistConfig();
+
+    broadcastLog(`[CONFIG] Tag eklendi: ${name} (${dt} @ ${type === 'coil' ? 'M' : 'D'}${address}) → config.json güncellendi`);
     res.json({ success: true, tag: newTag });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Tag sil
+// Tag sil — Faz 2: persistConfig çağrısı eklendi
 app.delete('/api/tags/:id', (req, res) => {
   try {
     const id  = parseInt(req.params.id, 10);
     const idx = plcState.tags.findIndex(t => t.id === id);
     if (idx === -1) return res.status(404).json({ success: false, error: 'Tag bulunamadı.' });
     const removed = plcState.tags.splice(idx, 1)[0];
-    broadcastLog(`[CONFIG] Tag silindi: ${removed.name}`);
+
+    // ── Faz 2: kalıcı kaydet ──────────────────────────────────────────────
+    persistConfig();
+
+    broadcastLog(`[CONFIG] Tag silindi: ${removed.name} → config.json güncellendi`);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Mevcut state
+// State
 app.get('/api/state', (req, res) => {
   res.json({
     status:         plcState.status,
@@ -460,16 +423,14 @@ io.on('connection', (socket) => {
     running:        plcState.running,
     simulationMode: plcState.simulationMode
   });
-  socket.on('disconnect', () => {
-    broadcastLog(`[WS] İstemci ayrıldı: ${socket.id}`);
-  });
+  socket.on('disconnect', () => broadcastLog(`[WS] İstemci ayrıldı: ${socket.id}`));
 });
 
 // ─── Başlat ───────────────────────────────────────────────────────────────────
 server.listen(PORT, () => {
   console.log(`\n╔══════════════════════════════════════════════════╗`);
-  console.log(`║  Delta PLC Web Test Bench — Faz 1 Hazır         ║`);
+  console.log(`║  Delta PLC Web Test Bench — Faz 2 Hazır         ║`);
   console.log(`║  http://localhost:${PORT}                           ║`);
   console.log(`╚══════════════════════════════════════════════════╝\n`);
-  broadcastLog('[SERVER] Delta PLC Web Test Bench v1.1 — Faz 1 (FLOAT32/INT16/UINT16/COIL) hazır.');
+  broadcastLog('[SERVER] Delta PLC Web Test Bench v1.2 — Faz 2 (Read Bundling + Kalıcı Config) hazır.');
 });

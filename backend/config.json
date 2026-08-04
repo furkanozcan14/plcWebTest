@@ -1,0 +1,60 @@
+{
+  "ip": "192.168.1.50",
+  "port": 502,
+  "nextTagId": 6,
+  "tags": [
+    {
+      "id": 1,
+      "name": "Evaporatör Sıcaklığı",
+      "type": "register",
+      "dataType": "FLOAT32",
+      "address": 100,
+      "unit": "°C",
+      "min": -50,
+      "max": 150,
+      "value": 0
+    },
+    {
+      "id": 2,
+      "name": "Kompresör Basıncı",
+      "type": "register",
+      "dataType": "INT16",
+      "address": 102,
+      "unit": "bar",
+      "min": 0,
+      "max": 50,
+      "value": 0
+    },
+    {
+      "id": 3,
+      "name": "Sıvı Vana Durumu",
+      "type": "coil",
+      "dataType": "COIL",
+      "address": 10,
+      "unit": "",
+      "value": 0
+    },
+    {
+      "id": 4,
+      "name": "Fan Hızı",
+      "type": "register",
+      "dataType": "UINT16",
+      "address": 104,
+      "unit": "RPM",
+      "min": 0,
+      "max": 3000,
+      "value": 0
+    },
+    {
+      "id": 5,
+      "name": "sdafsdaf",
+      "type": "register",
+      "dataType": "UINT16",
+      "address": 400,
+      "unit": "a",
+      "min": 100,
+      "max": 500,
+      "value": 0
+    }
+  ]
+}
