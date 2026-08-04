@@ -11,6 +11,13 @@
   - Yeşil (`#10B981`) & Kırmızı (`#EF4444`): Master Toggle START / STOP Durumları
   - Beyaz: `#FFFFFF` (Açık tema kart arka planları, metinler)
 - **Çift Tema (Dual Theme) Desteği:** Sağ üst köşedeki butonla Açık (Light) ve Koyu (Dark) temalar arasında dinamik geçiş yapılabilmelidir.
+- **Tipografi ve Okunabilirlik Standartları:**
+  - **Ana Font Ailesi:** `Inter`, `Roboto`, `Segoe UI`, `sans-serif` (Metinler, butonlar ve etiketler için).
+  - **Sayısal Değer & PLC Adres Fontu:** `JetBrains Mono`, `Roboto Mono`, `Consolas`, `monospace` (Tüm sayısal veriler, input alanları ve PLC adresleri için).
+  - **Saha Şartları İçin Harf Aralığı ve Ağırlık:** 
+    - Başlıklar ve Değerler: `font-bold` (Bold / Semi-Bold).
+    - Etiketler: Küçük harf yerine `UPPERCASE` (BÜYÜK HARF) ve hafif genişletilmiş harf aralığı (`tracking-wider`).
+    - Karakter Çakışması Karşıtı: Karıştırılabilecek karakterlerin (`0` ile `O`, `1` ile `l`) net ayırt edildiği açık tipografi CSS kuralları uygulanmalıdır.
 
 ## 2. Mimari ve Modül Yapısı
 Uygulama 3 ana görünümden (SPA - Single Page Application) oluşur:
@@ -40,3 +47,14 @@ Uygulama 3 ana görünümden (SPA - Single Page Application) oluşur:
 - **Input Clamping & Validation:** Sayısal veri girişlerinde aralık ve veri tipi kontrolü yapılmalı, hatalı veri girişlerinde backend işlemi reddetmelidir.
 - **Fail-Safe Master STOP:** Master STOP butonuna basıldığında veya bağlantı koptuğunda kritik adresler (örneğin M10 ana bit) otomatik olarak güvenli sıfır durumına (`0` / Reset) çekilmelidir.
 - **Global Error Handler:** Node.js/Backend katmanında yakalanmayan hiçbir asenkron hata sunucunun kapanmasına (crash) neden olmamalıdır (`try-catch` ve `process.on('uncaughtException')` önlemleri).
+
+## 5. Faz 1: Gelişmiş Veri Tipleri ve Input Clamping (Emniyet Sınırları)
+- **Desteklenen Veri Tipleri:**
+  - `FLOAT32`: Ondalıklı ve hassas veriler için ardışık 2 adet D register'ı kullanır (IEEE 754 Big-Endians).
+  - `INT16`: Negatif değerler (soğutma dereceleri vb.) için Signed 16-bit (-32768 .. +32767).
+  - `UINT16`: Standart Unsigned 16-bit (0 .. 65535).
+  - `COIL`: M bitleri (FC1/FC5).
+- **Tag Bazlı Min/Max Sınır Kontrolü (Input Clamping):**
+  - Konfigürasyon ekranında her tag için isteğe bağlı veya zorunlu Min ve Max değer sınırları tanımlanabilmelidir.
+  - **Frontend Clamping:** Kullanıcı tanımlı Min/Max sınırları dışında bir değer girdiğinde frontend uyaracak ve değeri otomatik olarak izin verilen Min veya Max sınırına sabitleyecektir (clamp).
+  - **Backend Fail-Safe Clamping:** Backend `modbusClient.js` gelen değeri PLC'ye yazmadan önce tekrar Min/Max kontrolünden geçirmeli; sınır dışı değerleri güvenli limite çekip konsola `[WARNING] Tag sınırı aşıldı, değere çekildi` uyarısı basmalıdır.

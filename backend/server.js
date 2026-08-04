@@ -1,7 +1,8 @@
 /**
- * server.js
+ * server.js — Faz 1 Refactor
  * Delta PLC Web Test Bench — Ana Sunucu
  * Express HTTP + Socket.io WebSocket + Modbus TCP polling
+ * Faz 1: dataType (FLOAT32/INT16/UINT16/COIL), min/max clamping desteği
  */
 
 const express = require('express');
@@ -26,24 +27,51 @@ app.use(express.static(path.join(__dirname, '..', 'frontend')));
 const PORT = 3000;
 const POLL_INTERVAL_MS = 200;
 
+// ─── Varsayılan Tag Listesi (Faz 1: dataType, min, max alanlarıyla) ──────────
+const DEFAULT_TAGS = [
+  {
+    id: 1, name: 'Evaporatör Sıcaklığı',
+    type: 'register', dataType: 'FLOAT32',
+    address: 100, unit: '°C',
+    min: -50, max: 150,
+    value: 0
+  },
+  {
+    id: 2, name: 'Kompresör Basıncı',
+    type: 'register', dataType: 'INT16',
+    address: 102, unit: 'bar',
+    min: 0, max: 50,
+    value: 0
+  },
+  {
+    id: 3, name: 'Sıvı Vana Durumu',
+    type: 'coil', dataType: 'COIL',
+    address: 10, unit: '',
+    min: undefined, max: undefined,
+    value: 0
+  },
+  {
+    id: 4, name: 'Fan Hızı',
+    type: 'register', dataType: 'UINT16',
+    address: 104, unit: 'RPM',
+    min: 0, max: 3000,
+    value: 0
+  },
+];
+
 // ─── State ────────────────────────────────────────────────────────────────────
 let plcState = {
-  status: 'DISCONNECTED', // DISCONNECTED | CONNECTED | RECONNECTING | STOPPED | FAIL_SAFE
+  status: 'DISCONNECTED',
   ip: '192.168.1.50',
   port: 502,
-  simulationMode: false,  // PLC bağlı değilken simülasyon verisi üretir
-  running: false,          // Master START/STOP durumu
-  tags: [                  // Varsayılan değişken eşleme tablosu
-    { id: 1, name: 'Evaporatör Sıcaklığı', type: 'register', address: 100, unit: '°C',  value: 0 },
-    { id: 2, name: 'Kompresör Basıncı',    type: 'register', address: 102, unit: 'bar', value: 0 },
-    { id: 3, name: 'Sıvı Vana Durumu',     type: 'coil',     address: 10,  unit: '',    value: 0 },
-    { id: 4, name: 'Fan Hızı',             type: 'register', address: 104, unit: 'RPM', value: 0 },
-  ],
+  simulationMode: false,
+  running: false,
+  tags: JSON.parse(JSON.stringify(DEFAULT_TAGS)), // deep copy
   nextTagId: 5,
-  simValues: {}            // Simülasyon değerleri
+  simValues: {}
 };
 
-// ─── Modbus & FailSafe ────────────────────────────────────────────────────────
+// ─── Log ──────────────────────────────────────────────────────────────────────
 function broadcastLog(msg) {
   const ts = new Date().toLocaleTimeString('tr-TR', { hour12: false });
   const entry = `[${ts}] ${msg}`;
@@ -51,48 +79,78 @@ function broadcastLog(msg) {
   io.emit('plc:log', { message: entry, timestamp: new Date().toISOString() });
 }
 
+// ─── Modbus & FailSafe ────────────────────────────────────────────────────────
 const modbusClient = new ModbusClient(broadcastLog);
 const failSafe = new FailSafeManager(modbusClient, io, broadcastLog);
 
-// ─── Polling ──────────────────────────────────────────────────────────────────
-let pollTimer = null;
-
+// ─── Simülasyon ───────────────────────────────────────────────────────────────
 function initSimValues() {
   plcState.simValues = {};
   for (const tag of plcState.tags) {
-    if (tag.type === 'register') {
-      if (tag.address === 100) plcState.simValues[tag.id] = 18;   // Evaporatör ~18°C
-      else if (tag.address === 102) plcState.simValues[tag.id] = 12; // Basınç ~12bar
-      else if (tag.address === 104) plcState.simValues[tag.id] = 1450; // Fan RPM
-      else plcState.simValues[tag.id] = 0;
-    } else {
+    const dt = (tag.dataType || 'UINT16').toUpperCase();
+    if (tag.type === 'coil') {
       plcState.simValues[tag.id] = 0;
+    } else if (dt === 'FLOAT32') {
+      // Evaporatör için gerçekçi başlangıç
+      plcState.simValues[tag.id] = tag.address === 100 ? 18.5 : 0.0;
+    } else if (dt === 'INT16') {
+      plcState.simValues[tag.id] = tag.address === 102 ? 12 : 0;
+    } else {
+      plcState.simValues[tag.id] = tag.address === 104 ? 1450 : 0;
     }
   }
 }
 
+function clamp(val, min, max) {
+  if (min !== undefined && val < min) return min;
+  if (max !== undefined && val > max) return max;
+  return val;
+}
+
 function updateSimValues() {
   for (const tag of plcState.tags) {
-    if (tag.type === 'register') {
-      let current = plcState.simValues[tag.id] || 0;
-      if (tag.address === 100) {
-        // Evaporatör sıcaklığı: 15-25°C arası gerçekçi dalgalanma
-        current += (Math.random() - 0.5) * 0.4;
-        current = Math.max(15, Math.min(25, current));
-      } else if (tag.address === 102) {
-        // Basınç: 10-15 bar
-        current += (Math.random() - 0.5) * 0.2;
-        current = Math.max(10, Math.min(15, current));
-      } else if (tag.address === 104) {
-        // Fan RPM: 1400-1500
-        current += (Math.random() - 0.5) * 10;
-        current = Math.max(1400, Math.min(1500, current));
-      }
+    if (tag.type === 'coil') continue;
+    const dt = (tag.dataType || 'UINT16').toUpperCase();
+    let current = plcState.simValues[tag.id] ?? 0;
+
+    if (dt === 'FLOAT32') {
+      // FLOAT32: ondalıklı dalgalanma
+      current += (Math.random() - 0.5) * 0.3;
+      current = clamp(current, tag.min ?? -50, tag.max ?? 150);
+      plcState.simValues[tag.id] = current;
+      tag.value = current; // float, toFixed frontend'de yapılacak
+    } else if (dt === 'INT16') {
+      current += Math.round((Math.random() - 0.5) * 2);
+      current = clamp(current, tag.min ?? -32768, tag.max ?? 32767);
+      plcState.simValues[tag.id] = current;
+      tag.value = Math.round(current);
+    } else {
+      // UINT16
+      current += Math.round((Math.random() - 0.5) * 10);
+      current = clamp(current, tag.min ?? 0, tag.max ?? 65535);
       plcState.simValues[tag.id] = current;
       tag.value = Math.round(current);
     }
   }
 }
+
+// ─── Tag serileştirme (Socket.io'ya gönderilecek alan seti) ──────────────────
+function serializeTag(t) {
+  return {
+    id:       t.id,
+    name:     t.name,
+    type:     t.type,
+    dataType: t.dataType || 'UINT16',
+    address:  t.address,
+    unit:     t.unit,
+    min:      t.min,
+    max:      t.max,
+    value:    t.value
+  };
+}
+
+// ─── Polling ──────────────────────────────────────────────────────────────────
+let pollTimer = null;
 
 async function pollPlc() {
   if (!plcState.running) return;
@@ -100,7 +158,7 @@ async function pollPlc() {
   if (plcState.simulationMode) {
     updateSimValues();
     io.emit('plc:data', {
-      tags: plcState.tags.map(t => ({ id: t.id, name: t.name, type: t.type, address: t.address, unit: t.unit, value: t.value })),
+      tags: plcState.tags.map(serializeTag),
       status: plcState.status,
       running: plcState.running,
       simulationMode: true
@@ -108,7 +166,6 @@ async function pollPlc() {
     return;
   }
 
-  // PLC bağlı ise gerçek okuma
   if (!modbusClient.isConnected()) {
     if (plcState.status !== 'RECONNECTING') {
       plcState.status = 'DISCONNECTED';
@@ -120,30 +177,23 @@ async function pollPlc() {
 
   for (const tag of plcState.tags) {
     try {
-      let result;
-      if (tag.type === 'register') {
-        result = await modbusClient.readRegister(tag.address);
-      } else if (tag.type === 'coil') {
-        result = await modbusClient.readCoil(tag.address);
-      }
+      // Faz 1: readTagValue kullan — dataType'a göre doğru FC seçer
+      const result = await modbusClient.readTagValue(tag);
 
-      if (result && result.success) {
+      if (result.success) {
         tag.value = result.value;
-      } else if (result && result.error === 'NOT_CONNECTED') {
-        // Bağlantı koptu
+      } else if (result.error === 'NOT_CONNECTED') {
         plcState.status = 'DISCONNECTED';
-        if (!failSafe.isReconnecting) {
-          failSafe.startReconnect(plcState.ip, plcState.port);
-        }
+        if (!failSafe.isReconnecting) failSafe.startReconnect(plcState.ip, plcState.port);
         break;
       }
     } catch (err) {
-      broadcastLog(`[ERR_POLL] Tag "${tag.name}" polling hatası: ${err.message}`);
+      broadcastLog(`[ERR_POLL] "${tag.name}" polling hatası: ${err.message}`);
     }
   }
 
   io.emit('plc:data', {
-    tags: plcState.tags.map(t => ({ id: t.id, name: t.name, type: t.type, address: t.address, unit: t.unit, value: t.value })),
+    tags: plcState.tags.map(serializeTag),
     status: plcState.status,
     running: plcState.running,
     simulationMode: false
@@ -157,10 +207,7 @@ function startPolling() {
 }
 
 function stopPolling() {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   broadcastLog('[POLLING] Durduruldu.');
 }
 
@@ -170,11 +217,18 @@ function stopPolling() {
 app.post('/api/connect', async (req, res) => {
   try {
     const { ip, port, tags, simulation } = req.body;
-    plcState.ip = ip || '192.168.1.50';
+    plcState.ip   = ip   || '192.168.1.50';
     plcState.port = parseInt(port, 10) || 502;
 
     if (tags && Array.isArray(tags)) {
-      plcState.tags = tags;
+      // Gelen tag'lerde dataType/min/max alanlarını normalize et
+      plcState.tags = tags.map(t => ({
+        ...t,
+        dataType: (t.dataType || 'UINT16').toUpperCase(),
+        min: t.min !== undefined ? parseFloat(t.min) : undefined,
+        max: t.max !== undefined ? parseFloat(t.max) : undefined,
+        value: t.value ?? 0
+      }));
     }
 
     if (simulation) {
@@ -217,32 +271,54 @@ app.post('/api/disconnect', async (req, res) => {
   }
 });
 
-// Register yaz (D register)
+// ─── Register / Coil yaz (Faz 1: tag id bazlı, dataType + clamping) ──────────
 app.post('/api/write', async (req, res) => {
   try {
-    const { address, value } = req.body;
+    const { tagId, address, value, dataType } = req.body;
 
-    if (address === undefined || value === undefined) {
-      return res.status(400).json({ success: false, error: 'address ve value gerekli.' });
-    }
+    // Tag'i bul: tagId varsa id ile, yoksa address + type ile
+    let tag = tagId
+      ? plcState.tags.find(t => t.id === parseInt(tagId, 10))
+      : plcState.tags.find(t => t.type === 'register' && t.address === parseInt(address, 10));
 
-    if (plcState.simulationMode) {
-      // Simülasyon modunda lokal güncelle
-      const tag = plcState.tags.find(t => t.type === 'register' && t.address === parseInt(address, 10));
-      if (tag) {
-        tag.value = parseInt(value, 10);
-        plcState.simValues[tag.id] = tag.value;
-        broadcastLog(`[WRITE SUCCESS] Delta Register D${address} set to ${value} (SIM)`);
-        return res.json({ success: true, value: tag.value });
-      }
+    if (!tag) {
       return res.status(404).json({ success: false, error: 'Tag bulunamadı.' });
     }
 
-    const result = await modbusClient.writeRegister(address, value);
+    if (value === undefined || value === null) {
+      return res.status(400).json({ success: false, error: 'value gerekli.' });
+    }
+
+    if (plcState.simulationMode) {
+      // Simülasyon: frontend clamping sonrası gelir ama backend'de de kontrol et
+      let numVal = parseFloat(value);
+      if (isNaN(numVal)) {
+        broadcastLog(`[ERR_VALIDATION] "${tag.name}" geçersiz değer: ${value}`);
+        return res.status(400).json({ success: false, error: 'VALIDATION_ERROR' });
+      }
+      // Backend clamp
+      if (tag.min !== undefined && numVal < tag.min) {
+        broadcastLog(`[WARNING] "${tag.name}" sınırı aşıldı: ${numVal} → ${tag.min}'e çekildi`);
+        numVal = tag.min;
+      }
+      if (tag.max !== undefined && numVal > tag.max) {
+        broadcastLog(`[WARNING] "${tag.name}" sınırı aşıldı: ${numVal} → ${tag.max}'e çekildi`);
+        numVal = tag.max;
+      }
+
+      tag.value = numVal;
+      plcState.simValues[tag.id] = numVal;
+
+      const dtLabel = (tag.dataType || 'UINT16').toUpperCase();
+      const addrLabel = `D${tag.address}`;
+      broadcastLog(`[WRITE SUCCESS] ${addrLabel} (${dtLabel}) set to ${numVal} (SIM)`);
+      return res.json({ success: true, value: numVal });
+    }
+
+    // Gerçek PLC yazma: writeTagValue tüm tip mantığını ve clamping'i içerir
+    const result = await modbusClient.writeTagValue(tag, value);
     if (result.success) {
-      // Lokal state güncelle
-      const tag = plcState.tags.find(t => t.type === 'register' && t.address === parseInt(address, 10));
-      if (tag) tag.value = result.value;
+      tag.value = result.value;
       res.json({ success: true, value: result.value });
     } else {
       res.status(500).json({ success: false, error: result.error });
@@ -253,30 +329,30 @@ app.post('/api/write', async (req, res) => {
   }
 });
 
-// Coil yaz (M relay)
+// Coil yaz (M relay) — ayrı endpoint korunuyor
 app.post('/api/coil', async (req, res) => {
   try {
-    const { address, value } = req.body;
+    const { tagId, address, value } = req.body;
 
-    if (address === undefined || value === undefined) {
-      return res.status(400).json({ success: false, error: 'address ve value gerekli.' });
+    let tag = tagId
+      ? plcState.tags.find(t => t.id === parseInt(tagId, 10))
+      : plcState.tags.find(t => t.type === 'coil' && t.address === parseInt(address, 10));
+
+    if (!tag) {
+      return res.status(404).json({ success: false, error: 'Coil tag bulunamadı.' });
     }
+
+    const boolVal = value === true || value === 1 || value === '1' || value === 'true';
 
     if (plcState.simulationMode) {
-      const tag = plcState.tags.find(t => t.type === 'coil' && t.address === parseInt(address, 10));
-      if (tag) {
-        tag.value = value ? 1 : 0;
-        const stateStr = tag.value ? 'ON (1)' : 'OFF (0)';
-        broadcastLog(`[COIL WRITE] M${address} → ${stateStr} (SIM)`);
-        return res.json({ success: true, value: tag.value });
-      }
-      return res.status(404).json({ success: false, error: 'Tag bulunamadı.' });
+      tag.value = boolVal ? 1 : 0;
+      broadcastLog(`[COIL WRITE] M${tag.address} → ${boolVal ? 'ON (1)' : 'OFF (0)'} (SIM)`);
+      return res.json({ success: true, value: tag.value });
     }
 
-    const result = await modbusClient.writeCoil(address, value);
+    const result = await modbusClient.writeTagValue(tag, boolVal);
     if (result.success) {
-      const tag = plcState.tags.find(t => t.type === 'coil' && t.address === parseInt(address, 10));
-      if (tag) tag.value = result.value;
+      tag.value = result.value;
       res.json({ success: true, value: result.value });
     } else {
       res.status(500).json({ success: false, error: result.error });
@@ -321,16 +397,27 @@ app.post('/api/stop', async (req, res) => {
   }
 });
 
-// Tag ekle
+// Tag ekle (Faz 1: dataType, min, max alanlarıyla)
 app.post('/api/tags', (req, res) => {
   try {
-    const { name, type, address, unit } = req.body;
+    const { name, type, dataType, address, unit, min, max } = req.body;
     if (!name || !type || address === undefined) {
       return res.status(400).json({ success: false, error: 'name, type ve address gerekli.' });
     }
-    const newTag = { id: plcState.nextTagId++, name, type, address: parseInt(address, 10), unit: unit || '', value: 0 };
+    const dt = (dataType || (type === 'coil' ? 'COIL' : 'UINT16')).toUpperCase();
+    const newTag = {
+      id:       plcState.nextTagId++,
+      name,
+      type,
+      dataType: dt,
+      address:  parseInt(address, 10),
+      unit:     unit || '',
+      min:      min !== undefined && min !== '' ? parseFloat(min) : undefined,
+      max:      max !== undefined && max !== '' ? parseFloat(max) : undefined,
+      value:    0
+    };
     plcState.tags.push(newTag);
-    broadcastLog(`[CONFIG] Tag eklendi: ${name} (${type === 'register' ? 'D' : 'M'}${address})`);
+    broadcastLog(`[CONFIG] Tag eklendi: ${name} (${dt} @ ${type === 'coil' ? 'M' : 'D'}${address})`);
     res.json({ success: true, tag: newTag });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -340,7 +427,7 @@ app.post('/api/tags', (req, res) => {
 // Tag sil
 app.delete('/api/tags/:id', (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id  = parseInt(req.params.id, 10);
     const idx = plcState.tags.findIndex(t => t.id === id);
     if (idx === -1) return res.status(404).json({ success: false, error: 'Tag bulunamadı.' });
     const removed = plcState.tags.splice(idx, 1)[0];
@@ -354,27 +441,25 @@ app.delete('/api/tags/:id', (req, res) => {
 // Mevcut state
 app.get('/api/state', (req, res) => {
   res.json({
-    status: plcState.status,
-    running: plcState.running,
+    status:         plcState.status,
+    running:        plcState.running,
     simulationMode: plcState.simulationMode,
-    tags: plcState.tags,
-    ip: plcState.ip,
-    port: plcState.port
+    tags:           plcState.tags.map(serializeTag),
+    ip:             plcState.ip,
+    port:           plcState.port
   });
 });
 
 // ─── Socket.io ────────────────────────────────────────────────────────────────
 io.on('connection', (socket) => {
   broadcastLog(`[WS] İstemci bağlandı: ${socket.id}`);
-  // Bağlanan istemciye mevcut durumu gönder
   socket.emit('plc:status', { status: plcState.status, running: plcState.running });
   socket.emit('plc:data', {
-    tags: plcState.tags,
-    status: plcState.status,
-    running: plcState.running,
+    tags:           plcState.tags.map(serializeTag),
+    status:         plcState.status,
+    running:        plcState.running,
     simulationMode: plcState.simulationMode
   });
-
   socket.on('disconnect', () => {
     broadcastLog(`[WS] İstemci ayrıldı: ${socket.id}`);
   });
@@ -383,8 +468,8 @@ io.on('connection', (socket) => {
 // ─── Başlat ───────────────────────────────────────────────────────────────────
 server.listen(PORT, () => {
   console.log(`\n╔══════════════════════════════════════════════════╗`);
-  console.log(`║  Delta PLC Web Test Bench — Sunucu Başlatıldı   ║`);
+  console.log(`║  Delta PLC Web Test Bench — Faz 1 Hazır         ║`);
   console.log(`║  http://localhost:${PORT}                           ║`);
   console.log(`╚══════════════════════════════════════════════════╝\n`);
-  broadcastLog('[SERVER] Delta PLC Web Test Bench v1.0 hazır.');
+  broadcastLog('[SERVER] Delta PLC Web Test Bench v1.1 — Faz 1 (FLOAT32/INT16/UINT16/COIL) hazır.');
 });

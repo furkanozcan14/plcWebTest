@@ -1,55 +1,101 @@
 /**
- * testbench.js
+ * testbench.js — Faz 1 Refactor
  * Canlı Test Bench: Kart render, SET/Coil işlemleri, Master Toggle, Konsol
+ * Faz 1: FLOAT32 gösterimi (toFixed(2)), frontend clamping, tagId bazlı yazma
  */
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let tbState = {
-  running: false,
-  status: 'DISCONNECTED',
+  running:        false,
+  status:         'DISCONNECTED',
   simulationMode: false,
-  tags: [],
-  logCount: 0,
-  MAX_LOG_LINES: 200,
+  tags:           [],
+  logCount:       0,
+  MAX_LOG_LINES:  200,
 };
+
+// ─── Değer formatlama (SKILL.md Faz 1: FLOAT32 → 2 ondalık) ─────────────────
+/**
+ * Tag'in veri tipine göre görüntülenecek değeri formatlar.
+ * FLOAT32 → .toFixed(2)
+ * INT16 / UINT16 → integer string
+ * COIL → "ON" / "OFF"
+ */
+function formatValue(tag, raw) {
+  if (raw === undefined || raw === null) return '—';
+  const dt = (tag.dataType || 'UINT16').toUpperCase();
+  if (dt === 'FLOAT32') return parseFloat(raw).toFixed(2);
+  return Math.round(parseFloat(raw)).toString();
+}
+
+/**
+ * SET girişi için placeholder metni
+ */
+function buildPlaceholder(tag) {
+  const dt = (tag.dataType || 'UINT16').toUpperCase();
+  const minStr = tag.min !== undefined ? tag.min : '';
+  const maxStr = tag.max !== undefined ? tag.max : '';
+  const range  = (minStr !== '' && maxStr !== '') ? `${minStr} – ${maxStr}` : '';
+  const dtHint = dt === 'FLOAT32' ? 'Ondalıklı' : dt === 'INT16' ? 'Negatif OK' : '0-65535';
+  return range ? `${range} (${dtHint})` : dtHint;
+}
+
+/**
+ * Frontend clamping (SKILL.md §5):
+ * Değer min/max dışındaysa sınıra çekip geri döndürür.
+ * @returns { clamped: bool, value: number, message: string|null }
+ */
+function frontendClamp(tag, numVal) {
+  const min = tag.min !== undefined ? parseFloat(tag.min) : undefined;
+  const max = tag.max !== undefined ? parseFloat(tag.max) : undefined;
+
+  if (min !== undefined && numVal < min) {
+    return {
+      clamped: true,
+      value:   min,
+      message: `[CLAMP] "${tag.name}": ${numVal} < Min(${min}) → ${min}'e çekildi.`
+    };
+  }
+  if (max !== undefined && numVal > max) {
+    return {
+      clamped: true,
+      value:   max,
+      message: `[CLAMP] "${tag.name}": ${numVal} > Max(${max}) → ${max}'e çekildi.`
+    };
+  }
+  return { clamped: false, value: numVal, message: null };
+}
 
 // ─── Konsol ───────────────────────────────────────────────────────────────────
 function consoleLog(message) {
-  const body = document.getElementById('console-body');
+  const body    = document.getElementById('console-body');
   const countEl = document.getElementById('console-count');
   if (!body) return;
 
-  // Max satır limiti
   const lines = body.querySelectorAll('.log-line');
-  if (lines.length >= tbState.MAX_LOG_LINES) {
-    lines[0].remove();
-  }
+  if (lines.length >= tbState.MAX_LOG_LINES) lines[0].remove();
+
+  let msgClass = 'log-msg';
+  if (message.includes('[WRITE SUCCESS]'))          msgClass += ' success';
+  else if (message.includes('[COIL WRITE]'))        msgClass += ' coil';
+  else if (message.includes('[CLAMP]'))             msgClass += ' warning';
+  else if (message.includes('[WARNING]'))           msgClass += ' warning';
+  else if (message.includes('[ERR') || message.includes('[FATAL]')) msgClass += ' error';
+  else if (message.includes('[RECONNECT]'))         msgClass += ' warning';
+  else if (message.includes('[CONNECTED]'))         msgClass += ' success';
+  else if (message.includes('[DISCONNECTED]'))      msgClass += ' error';
+  else if (message.includes('[MASTER]'))            msgClass += ' master';
+  else if (message.includes('[FAIL-SAFE]') || message.includes('[FAIL_SAFE]')) msgClass += ' failsafe';
+  else if (message.includes('[WS]') || message.includes('[SERVER]') ||
+           message.includes('[POLLING]') || message.includes('[CONFIG]')) msgClass += ' info';
+  else if (message.includes('[SIM'))               msgClass += ' warning';
+
+  const tsMatch = message.match(/^\[(\d{2}:\d{2}:\d{2})\]\s*/);
+  const ts  = tsMatch ? tsMatch[1] : '';
+  const msg = tsMatch ? message.slice(tsMatch[0].length) : message;
 
   const line = document.createElement('div');
   line.className = 'log-line fade-in';
-
-  // Log tipine göre renklendirme
-  let msgClass = 'log-msg';
-  if (message.includes('[WRITE SUCCESS]'))        msgClass += ' success';
-  else if (message.includes('[COIL WRITE]'))       msgClass += ' coil';
-  else if (message.includes('[ERR') || message.includes('[FATAL]') || message.includes('[ERR_')) msgClass += ' error';
-  else if (message.includes('[RECONNECT]'))        msgClass += ' warning';
-  else if (message.includes('[CONNECTED]'))        msgClass += ' success';
-  else if (message.includes('[DISCONNECTED]'))     msgClass += ' error';
-  else if (message.includes('[MASTER]'))           msgClass += ' master';
-  else if (message.includes('[FAIL-SAFE]') || message.includes('[FAIL_SAFE]')) msgClass += ' failsafe';
-  else if (message.includes('[WS]') || message.includes('[SERVER]') || message.includes('[POLLING]') || message.includes('[CONFIG]')) msgClass += ' info';
-  else if (message.includes('[SIM'))               msgClass += ' warning';
-
-  // Zaman damgasını ayır
-  const tsMatch = message.match(/^\[(\d{2}:\d{2}:\d{2})\]\s*/);
-  let ts = '';
-  let msg = message;
-  if (tsMatch) {
-    ts = tsMatch[1];
-    msg = message.slice(tsMatch[0].length);
-  }
-
   line.innerHTML = `<span class="log-ts">${ts || '--:--:--'}</span><span class="${msgClass}">${escapeHtmlConsole(msg)}</span>`;
   body.appendChild(line);
   body.scrollTop = body.scrollHeight;
@@ -59,14 +105,14 @@ function consoleLog(message) {
 }
 
 function escapeHtmlConsole(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// ─── Durum LED Güncelle ───────────────────────────────────────────────────────
+// ─── Durum LED ────────────────────────────────────────────────────────────────
 function updateTbStatus(status) {
   tbState.status = status;
-  const dot  = document.getElementById('tb-led-dot');
-  const text = document.getElementById('tb-status-text');
+  const dot      = document.getElementById('tb-led-dot');
+  const text     = document.getElementById('tb-status-text');
   const simBadge = document.getElementById('sim-badge');
   if (!dot || !text) return;
 
@@ -78,14 +124,10 @@ function updateTbStatus(status) {
     'STOPPED':      { cls: 'stopped',      label: 'STOPPED' },
     'FAIL_SAFE':    { cls: 'stopped',      label: 'FAIL-SAFE' },
   };
-
   const s = map[status] || map['DISCONNECTED'];
-  dot.className = `led-dot ${s.cls}`;
+  dot.className  = `led-dot ${s.cls}`;
   text.textContent = s.label;
-
-  if (simBadge) {
-    simBadge.style.display = (status === 'SIMULATION') ? 'inline-flex' : 'none';
-  }
+  if (simBadge) simBadge.style.display = (status === 'SIMULATION') ? 'inline-flex' : 'none';
 }
 
 // ─── Master Toggle ────────────────────────────────────────────────────────────
@@ -99,7 +141,6 @@ function updateMasterButton(running) {
     btn.className = 'btn-master stop';
     btn.setAttribute('aria-label', 'Sistemi durdur');
     label.textContent = 'STOP';
-    // İkon güncelle
     const icon = btn.querySelector('i');
     if (icon) { icon.setAttribute('data-lucide', 'square'); lucide.createIcons(); }
   } else {
@@ -114,23 +155,15 @@ function updateMasterButton(running) {
 async function handleMasterToggle() {
   const btn = document.getElementById('btn-master-toggle');
   if (btn) btn.disabled = true;
-
   try {
     if (!tbState.running) {
-      // START
       const res  = await fetch('/api/start', { method: 'POST' });
       const data = await res.json();
-      if (data.success) {
-        updateMasterButton(true);
-      }
+      if (data.success) updateMasterButton(true);
     } else {
-      // STOP
       const res  = await fetch('/api/stop', { method: 'POST' });
       const data = await res.json();
-      if (data.success) {
-        updateMasterButton(false);
-        updateTbStatus('STOPPED');
-      }
+      if (data.success) { updateMasterButton(false); updateTbStatus('STOPPED'); }
     }
   } catch (err) {
     consoleLog(`[ERR] Master toggle: ${err.message}`);
@@ -139,48 +172,26 @@ async function handleMasterToggle() {
   }
 }
 
-// ─── Kart Render ─────────────────────────────────────────────────────────────
-function renderCards(tags) {
-  const grid = document.getElementById('cards-grid');
-  if (!grid) return;
-
-  // Mevcut kartları güncelle veya yeni ekle
-  const existingCards = new Set(Array.from(grid.querySelectorAll('[data-tag-id]')).map(el => parseInt(el.dataset.tagId)));
-
-  tags.forEach(tag => {
-    if (existingCards.has(tag.id)) {
-      // Var olan kartı güncelle
-      updateCard(tag);
-    } else {
-      // Yeni kart oluştur
-      const card = createCard(tag);
-      grid.appendChild(card);
-    }
-    existingCards.delete(tag.id);
-  });
-
-  // Silinmiş tag'lerin kartlarını kaldır
-  existingCards.forEach(id => {
-    const el = grid.querySelector(`[data-tag-id="${id}"]`);
-    if (el) el.remove();
-  });
-
-  if (window.lucide) lucide.createIcons();
-}
-
-function createCard(tag) {
-  const div = document.createElement('div');
-  div.className = 'tag-card fade-in';
-  div.dataset.tagId = tag.id;
-  div.innerHTML = buildCardHTML(tag);
-  return div;
-}
-
+// ─── Kart HTML Oluşturma ──────────────────────────────────────────────────────
 function buildCardHTML(tag) {
-  const prefix = tag.type === 'register' ? 'D' : 'M';
+  const prefix     = tag.type === 'register' ? 'D' : 'M';
   const badgeClass = tag.type === 'register' ? 'register' : 'coil';
+  const dt         = (tag.dataType || 'UINT16').toUpperCase();
+  const dispVal    = formatValue(tag, tag.value);
 
   if (tag.type === 'register') {
+    // FC bilgisi tipine göre
+    const fcInfo = dt === 'FLOAT32'
+      ? 'Holding Reg × 2 • FLOAT32 • FC3/FC16'
+      : dt === 'INT16'
+        ? 'Holding Reg • INT16 Signed • FC3/FC16'
+        : 'Holding Reg • UINT16 • FC3/FC16';
+
+    // Min/Max gösterge
+    const limitsStr = (tag.min !== undefined || tag.max !== undefined)
+      ? `<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-left:6px;">[${tag.min ?? '—'} … ${tag.max ?? '—'}]</span>`
+      : '';
+
     return `
       <div class="tag-card-header">
         <span class="tag-card-name">${escapeHtmlConsole(tag.name)}</span>
@@ -188,17 +199,21 @@ function buildCardHTML(tag) {
       </div>
       <div class="tag-card-body">
         <div class="value-display">
-          <span class="live-value" id="val-${tag.id}">${tag.value ?? 0}</span>
+          <span class="live-value" id="val-${tag.id}">${dispVal}</span>
           <span class="unit">${escapeHtmlConsole(tag.unit || '')}</span>
         </div>
-        <div class="value-addr">Modbus Holding Reg • FC3/FC16</div>
+        <div class="value-addr">
+          ${fcInfo}${limitsStr}
+        </div>
         <div class="set-row">
           <input
             id="set-input-${tag.id}"
             class="set-input"
             type="number"
-            placeholder="Değer gir (0-65535)"
-            min="0" max="65535"
+            placeholder="${buildPlaceholder(tag)}"
+            step="${dt === 'FLOAT32' ? '0.01' : '1'}"
+            ${tag.min !== undefined ? `min="${tag.min}"` : ''}
+            ${tag.max !== undefined ? `max="${tag.max}"` : ''}
             aria-label="${tag.name} için yeni değer"
           />
           <button
@@ -212,6 +227,7 @@ function buildCardHTML(tag) {
       </div>
     `;
   } else {
+    // COIL kartı
     const isOn = tag.value === 1 || tag.value === true;
     return `
       <div class="tag-card-header">
@@ -251,11 +267,43 @@ function buildCardHTML(tag) {
   }
 }
 
+// ─── Kart Render / Güncelleme ─────────────────────────────────────────────────
+function renderCards(tags) {
+  const grid = document.getElementById('cards-grid');
+  if (!grid) return;
+
+  const existingCards = new Set(
+    Array.from(grid.querySelectorAll('[data-tag-id]')).map(el => parseInt(el.dataset.tagId))
+  );
+
+  tags.forEach(tag => {
+    if (existingCards.has(tag.id)) {
+      updateCard(tag);
+    } else {
+      const card = document.createElement('div');
+      card.className = 'tag-card fade-in';
+      card.dataset.tagId = tag.id;
+      card.innerHTML = buildCardHTML(tag);
+      grid.appendChild(card);
+    }
+    existingCards.delete(tag.id);
+  });
+
+  // Silinmiş kartları temizle
+  existingCards.forEach(id => {
+    const el = grid.querySelector(`[data-tag-id="${id}"]`);
+    if (el) el.remove();
+  });
+
+  if (window.lucide) lucide.createIcons();
+}
+
 function updateCard(tag) {
   if (tag.type === 'register') {
     const valEl = document.getElementById(`val-${tag.id}`);
+    // Kullanıcı o input'a odaklanmışsa değer yazan polling ezmez
     if (valEl && document.activeElement?.id !== `set-input-${tag.id}`) {
-      valEl.textContent = tag.value ?? 0;
+      valEl.textContent = formatValue(tag, tag.value);
     }
   } else {
     const isOn  = tag.value === 1 || tag.value === true;
@@ -263,15 +311,14 @@ function updateCard(tag) {
     const text  = document.getElementById(`coil-text-${tag.id}`);
     const onBtn = document.getElementById(`coil-on-${tag.id}`);
     const offBtn= document.getElementById(`coil-off-${tag.id}`);
-
-    if (led)   { led.className = `coil-led ${isOn ? 'on' : 'off'}`; }
+    if (led)   led.className  = `coil-led ${isOn ? 'on' : 'off'}`;
     if (text)  { text.className = `coil-state-text ${isOn ? 'on' : 'off'}`; text.textContent = isOn ? 'ON' : 'OFF'; }
-    if (onBtn) { onBtn.classList.toggle('active', isOn); }
-    if (offBtn){ offBtn.classList.toggle('active', !isOn); }
+    if (onBtn) onBtn.classList.toggle('active', isOn);
+    if (offBtn)offBtn.classList.toggle('active', !isOn);
   }
 }
 
-// ─── SET Register ─────────────────────────────────────────────────────────────
+// ─── SET Register (Faz 1: clamping + tagId + FLOAT32) ─────────────────────────
 async function handleSetRegister(tagId, address) {
   const inputEl = document.getElementById(`set-input-${tagId}`);
   const btnEl   = document.getElementById(`set-btn-${tagId}`);
@@ -284,20 +331,48 @@ async function handleSetRegister(tagId, address) {
     return;
   }
 
-  const val = parseInt(raw, 10);
-  if (isNaN(val) || val < 0 || val > 65535) {
-    consoleLog(`[ERR_VALIDATION] D${address} — Değer 0-65535 arasında olmalıdır. Girilen: ${raw}`);
+  // Tag nesnesini bul (dataType ve min/max için)
+  const tag = tbState.tags.find(t => t.id === tagId);
+  if (!tag) { consoleLog(`[ERR] Tag #${tagId} bulunamadı.`); return; }
+
+  const dt = (tag.dataType || 'UINT16').toUpperCase();
+
+  // Sayısal parse
+  let numVal = parseFloat(raw);
+  if (isNaN(numVal)) {
+    consoleLog(`[ERR_VALIDATION] D${address} — Sayısal olmayan değer: "${raw}"`);
     inputEl.focus();
     return;
   }
 
-  if (btnEl) { btnEl.disabled = true; btnEl.textContent = '...'; }
+  // Tip bazlı ham sınır (frontend)
+  if (dt === 'UINT16' && (numVal < 0 || numVal > 65535)) {
+    consoleLog(`[ERR_VALIDATION] D${address} UINT16 — 0-65535 dışında: ${numVal}`);
+    inputEl.focus();
+    return;
+  }
+  if (dt === 'INT16' && (numVal < -32768 || numVal > 32767)) {
+    consoleLog(`[ERR_VALIDATION] D${address} INT16 — -32768..32767 dışında: ${numVal}`);
+    inputEl.focus();
+    return;
+  }
+
+  // ── Frontend Clamping (SKILL.md §5) ────────────────────────────────────────
+  const clamp = frontendClamp(tag, numVal);
+  if (clamp.clamped) {
+    consoleLog(clamp.message);
+    numVal = clamp.value;
+    // Input alanını clamp'lenmiş değere güncelle (kullanıcıya görünür geri bildirim)
+    inputEl.value = dt === 'FLOAT32' ? numVal.toFixed(2) : String(numVal);
+  }
+
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = '…'; }
 
   try {
     const res  = await fetch('/api/write', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address, value: val })
+      body: JSON.stringify({ tagId, address, value: numVal })
     });
     const data = await res.json();
 
@@ -320,7 +395,7 @@ async function handleSetRegister(tagId, address) {
   }
 }
 
-// ─── COIL Yaz ────────────────────────────────────────────────────────────────
+// ─── COIL Yaz (tagId bazlı) ───────────────────────────────────────────────────
 async function handleCoilWrite(tagId, address, value) {
   const onBtn  = document.getElementById(`coil-on-${tagId}`);
   const offBtn = document.getElementById(`coil-off-${tagId}`);
@@ -331,13 +406,10 @@ async function handleCoilWrite(tagId, address, value) {
     const res  = await fetch('/api/coil', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address, value: value === 1 })
+      body: JSON.stringify({ tagId, address, value: value === 1 })
     });
     const data = await res.json();
-
-    if (!data.success) {
-      consoleLog(`[ERR_COIL] M${address} → ${data.error}`);
-    }
+    if (!data.success) consoleLog(`[ERR_COIL] M${address} → ${data.error}`);
   } catch (err) {
     consoleLog(`[ERR] Coil isteği başarısız: ${err.message}`);
   } finally {
@@ -352,30 +424,19 @@ function attachCardEvents() {
   if (!grid) return;
 
   grid.addEventListener('click', (e) => {
-    // SET butonu
     const setBtn = e.target.closest('[id^="set-btn-"]');
     if (setBtn) {
-      const tagId  = parseInt(setBtn.dataset.tagId, 10);
-      const address = parseInt(setBtn.dataset.address, 10);
-      handleSetRegister(tagId, address);
+      handleSetRegister(parseInt(setBtn.dataset.tagId, 10), parseInt(setBtn.dataset.address, 10));
       return;
     }
-
-    // ON butonu
     const onBtn = e.target.closest('[id^="coil-on-"]');
     if (onBtn) {
-      const tagId   = parseInt(onBtn.dataset.tagId, 10);
-      const address = parseInt(onBtn.dataset.address, 10);
-      handleCoilWrite(tagId, address, 1);
+      handleCoilWrite(parseInt(onBtn.dataset.tagId, 10), parseInt(onBtn.dataset.address, 10), 1);
       return;
     }
-
-    // OFF butonu
     const offBtn = e.target.closest('[id^="coil-off-"]');
     if (offBtn) {
-      const tagId   = parseInt(offBtn.dataset.tagId, 10);
-      const address = parseInt(offBtn.dataset.address, 10);
-      handleCoilWrite(tagId, address, 0);
+      handleCoilWrite(parseInt(offBtn.dataset.tagId, 10), parseInt(offBtn.dataset.address, 10), 0);
       return;
     }
   });
@@ -385,8 +446,7 @@ function attachCardEvents() {
     if (e.key === 'Enter') {
       const input = e.target.closest('[id^="set-input-"]');
       if (input) {
-        const idStr = input.id.replace('set-input-', '');
-        const tagId = parseInt(idStr, 10);
+        const tagId = parseInt(input.id.replace('set-input-', ''), 10);
         const tag   = tbState.tags.find(t => t.id === tagId);
         if (tag) handleSetRegister(tagId, tag.address);
       }
@@ -396,78 +456,55 @@ function attachCardEvents() {
 
 // ─── Konsol Temizle ───────────────────────────────────────────────────────────
 function clearConsole() {
-  const body = document.getElementById('console-body');
+  const body    = document.getElementById('console-body');
   const countEl = document.getElementById('console-count');
-  if (body) {
-    body.innerHTML = '<div class="log-line"><span class="log-ts">--:--:--</span><span class="log-msg info">Konsol temizlendi.</span></div>';
-  }
+  if (body) body.innerHTML = '<div class="log-line"><span class="log-ts">--:--:--</span><span class="log-msg info">Konsol temizlendi.</span></div>';
   tbState.logCount = 0;
   if (countEl) countEl.textContent = '0 satır';
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  // Master Toggle
   document.getElementById('btn-master-toggle')?.addEventListener('click', handleMasterToggle);
-
-  // Konsol Temizle
   document.getElementById('btn-clear-console')?.addEventListener('click', clearConsole);
-
-  // Kart event'leri
   attachCardEvents();
 
-  // Sunucudan mevcut state al
   fetch('/api/state')
     .then(r => r.json())
     .then(data => {
-      tbState.status = data.status || 'DISCONNECTED';
+      tbState.status         = data.status || 'DISCONNECTED';
       tbState.simulationMode = data.simulationMode || false;
-      tbState.running = data.running || false;
-      tbState.tags = data.tags || [];
+      tbState.running        = data.running || false;
+      tbState.tags           = data.tags || [];
 
       updateTbStatus(tbState.status);
       updateMasterButton(tbState.running);
-
-      if (tbState.tags.length > 0) {
-        renderCards(tbState.tags);
-        lucide.createIcons();
-      }
+      if (tbState.tags.length > 0) { renderCards(tbState.tags); lucide.createIcons(); }
     })
-    .catch(() => {
-      consoleLog('[ERR] Sunucudan durum alınamadı. Backend çalışıyor mu?');
-    });
+    .catch(() => consoleLog('[ERR] Sunucudan durum alınamadı. Backend çalışıyor mu?'));
 
-  // Socket.io dinleyicileri
+  // Socket bekle
   const waitForSocket = setInterval(() => {
-    if (window.plcSocket) {
-      clearInterval(waitForSocket);
-      bindSocketEvents(window.plcSocket);
-    }
+    if (window.plcSocket) { clearInterval(waitForSocket); bindSocketEvents(window.plcSocket); }
   }, 100);
 });
 
 function bindSocketEvents(socket) {
-  // Canlı veri
   socket.on('plc:data', (data) => {
     if (data.tags && Array.isArray(data.tags)) {
-      tbState.tags = data.tags;
+      tbState.tags           = data.tags;
       tbState.simulationMode = data.simulationMode || false;
-      tbState.running = data.running !== undefined ? data.running : tbState.running;
-
+      tbState.running        = data.running !== undefined ? data.running : tbState.running;
       renderCards(data.tags);
       updateTbStatus(data.status || tbState.status);
     }
   });
 
-  // Durum güncellemeleri
   socket.on('plc:status', (data) => {
     updateTbStatus(data.status);
-    if (data.running !== undefined) {
-      updateMasterButton(data.running);
-    }
+    if (data.running !== undefined) updateMasterButton(data.running);
   });
 
-  // Log mesajları
   socket.on('plc:log', (data) => {
     consoleLog(data.message || data);
   });

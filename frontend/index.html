@@ -229,9 +229,11 @@
             <tr>
               <th>#</th>
               <th>Değişken Adı</th>
-              <th>Tip</th>
+              <th>Veri Tipi</th>
               <th>Adres</th>
               <th>Birim</th>
+              <th style="color:var(--green);">Min</th>
+              <th style="color:var(--red);">Max</th>
               <th>İşlem</th>
             </tr>
           </thead>
@@ -240,27 +242,44 @@
           </tbody>
         </table>
 
-        <!-- Yeni Tag Formu -->
+        <!-- Yeni Tag Formu (Faz 1: Veri Tipi + Min/Max) -->
         <div style="padding:10px 14px;border-top:1px solid var(--border);">
-          <div class="add-tag-form">
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 0.7fr 0.7fr 0.7fr auto;gap:6px;align-items:end;">
             <div>
               <label class="form-label">Değişken Adı</label>
               <input id="new-tag-name" class="form-input" type="text" placeholder="Örn: Kompresör Sıcaklığı" />
             </div>
             <div>
-              <label class="form-label">Tip</label>
+              <label class="form-label">Kayıt Tipi</label>
               <select id="new-tag-type" class="form-input">
                 <option value="register">Register (D)</option>
                 <option value="coil">Coil (M)</option>
               </select>
             </div>
             <div>
+              <label class="form-label">Veri Tipi</label>
+              <select id="new-tag-datatype" class="form-input">
+                <option value="UINT16">UINT16</option>
+                <option value="INT16">INT16</option>
+                <option value="FLOAT32">FLOAT32</option>
+                <option value="COIL">COIL</option>
+              </select>
+            </div>
+            <div>
               <label class="form-label">Adres</label>
-              <input id="new-tag-address" class="form-input" type="number" placeholder="Örn: 106" min="0" />
+              <input id="new-tag-address" class="form-input" type="number" placeholder="106" min="0" />
             </div>
             <div>
               <label class="form-label">Birim</label>
-              <input id="new-tag-unit" class="form-input" type="text" placeholder="°C / bar / RPM" />
+              <input id="new-tag-unit" class="form-input" type="text" placeholder="°C / bar" />
+            </div>
+            <div>
+              <label class="form-label" style="color:var(--green);">Min</label>
+              <input id="new-tag-min" class="form-input" type="number" placeholder="—" step="any" />
+            </div>
+            <div>
+              <label class="form-label" style="color:var(--red);">Max</label>
+              <input id="new-tag-max" class="form-input" type="number" placeholder="—" step="any" />
             </div>
             <div style="display:flex;align-items:flex-end;">
               <button id="btn-add-tag" class="btn btn-accent">
