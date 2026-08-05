@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "name": "SICAKLIK DEĞİŞTİR",
+    "steps": [
+      {
+        "tagId": "1",
+        "targetValue": "100",
+        "delayMs": "0"
+      },
+      {
+        "tagId": "2",
+        "targetValue": "25",
+        "delayMs": "0"
+      }
+    ],
+    "id": "1785926510810"
+  }
+]

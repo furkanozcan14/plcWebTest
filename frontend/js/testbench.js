@@ -16,7 +16,7 @@ let tbState = {
 
 // ─── Chart.js State ───────────────────────────────────────────────────────────
 let trendChart = null;
-const MAX_CHART_POINTS = 600; // 2 minutes at 200ms polling = 600 points. Let's say 1 point per second to not overload (120 points).
+// MAX_CHART_POINTS is defined near Chart.js section
 let lastChartUpdate = 0;
 
 // ─── Değer formatlama (SKILL.md Faz 1: FLOAT32 → 2 ondalık) ─────────────────
@@ -116,8 +116,8 @@ function escapeHtmlConsole(str) {
 // ─── Durum LED ────────────────────────────────────────────────────────────────
 function updateTbStatus(status) {
   tbState.status = status;
-  const dot      = document.getElementById('tb-led-dot');
-  const text     = document.getElementById('tb-status-text');
+  const dot      = document.getElementById('topbar-led-dot');
+  const text     = document.getElementById('topbar-status-text');
   const simBadge = document.getElementById('sim-badge');
   if (!dot || !text) return;
 
@@ -506,6 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tbState.tags.length > 0) { renderCards(tbState.tags); lucide.createIcons(); }
       
       initLiveChart();
+      renderChartCheckboxes(tbState.tags);
     })
     .catch(() => consoleLog('[ERR] Sunucudan durum alınamadı. Backend çalışıyor mu?'));
 
@@ -518,6 +519,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function bindSocketEvents(socket) {
   socket.on('plc:data', (data) => {
     if (data.tags && Array.isArray(data.tags)) {
+      if (tbState.tags.length !== data.tags.length) {
+         renderChartCheckboxes(data.tags);
+      }
       tbState.tags           = data.tags;
       tbState.simulationMode = data.simulationMode || false;
       tbState.running        = data.running !== undefined ? data.running : tbState.running;
@@ -546,34 +550,122 @@ function bindSocketEvents(socket) {
 
 // ─── CSV Rapor İndirme ────────────────────────────────────────────────────────
 function exportCSV() {
-  if (tbState.tags.length === 0) {
-    alert("Dışa aktarılacak tag bulunamadı.");
-    return;
-  }
-  
-  let csvContent = "data:text/csv;charset=utf-8,";
-  
-  // Başlıklar
-  csvContent += "ID,Isim,Tip,Data_Tipi,Adres,Deger,Birim,Alt_Alarm,Ust_Alarm\r\n";
-  
-  // Veriler
-  tbState.tags.forEach(tag => {
-    const minAlarm = tag.lowAlarm !== undefined ? tag.lowAlarm : "";
-    const maxAlarm = tag.highAlarm !== undefined ? tag.highAlarm : "";
-    const row = `${tag.id},"${tag.name}",${tag.type},${tag.dataType},${tag.address},${tag.value},${tag.unit},${minAlarm},${maxAlarm}`;
-    csvContent += row + "\r\n";
-  });
-  
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `PLC_Test_Raporu_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  // Download the async buffered log file from backend
+  window.open('/api/download-log', '_blank');
 }
 
 // ─── Chart.js (Canlı Trend Grafiği) ──────────────────────────────────────────
+let selectedChartTags = [];
+const chartColors = ['#FFD300', '#10B981', '#3B82F6', '#EC4899', '#8B5CF6'];
+
+const MAX_CHART_POINTS = 120; // 2 mins at 1 update/sec
+let tagHistory = {}; // Buffer for all tags: { tagId: [data...] }
+let chartLabels = []; // Buffer for time labels
+
+function renderChartCheckboxes(tags) {
+  const container = document.getElementById('chart-tag-selectors');
+  if (!container) return;
+  container.innerHTML = '';
+  
+  const plottableTags = tags; // Include all tags (registers and coils)
+  if (plottableTags.length === 0) {
+    container.innerHTML = '<span style="font-size:12px;color:var(--text-muted);">Gösterilecek değişken yok.</span>';
+    return;
+  }
+
+  // Varsayılan olarak ilk iki tag'i seçelim (varsa)
+  if (selectedChartTags.length === 0) {
+    selectedChartTags = plottableTags.slice(0, 2).map(t => t.id);
+  }
+
+  plottableTags.forEach((tag, index) => {
+    const color = chartColors[index % chartColors.length];
+    const isChecked = selectedChartTags.includes(tag.id);
+    
+    const wrapper = document.createElement('label');
+    wrapper.style.display = 'flex';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.gap = '6px';
+    wrapper.style.cursor = 'pointer';
+    wrapper.style.fontSize = '13px';
+    wrapper.style.color = 'var(--text-secondary)';
+    
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = tag.id;
+    cb.checked = isChecked;
+    cb.onchange = (e) => {
+      const tid = tag.id;
+      if (e.target.checked) {
+        if (!selectedChartTags.includes(tid)) selectedChartTags.push(tid);
+      } else {
+        selectedChartTags = selectedChartTags.filter(id => id !== tid);
+      }
+      syncChartDatasets(tbState.tags);
+    };
+    
+    const colorIndicator = document.createElement('div');
+    colorIndicator.style.width = '10px';
+    colorIndicator.style.height = '10px';
+    colorIndicator.style.borderRadius = '50%';
+    colorIndicator.style.backgroundColor = color;
+    
+    const prefix = tag.type === 'register' ? 'D' : 'M';
+    wrapper.appendChild(cb);
+    wrapper.appendChild(colorIndicator);
+    wrapper.appendChild(document.createTextNode(`${prefix}${tag.address} (${tag.name})`));
+    container.appendChild(wrapper);
+  });
+  
+  syncChartDatasets(tags);
+}
+
+function syncChartDatasets(tags) {
+  if (!trendChart) return;
+  
+  const newDatasets = [];
+  
+  try {
+    selectedChartTags.forEach((tagId) => {
+      const tag = tags.find(t => t.id === tagId);
+      if (!tag) return;
+      
+      const tagIndex = tags.indexOf(tag);
+      const color = chartColors[tagIndex % chartColors.length];
+      
+      // Eski dataset var mı bulalım ki verileri kaybolmasın
+      const existingDataset = trendChart.data.datasets.find(d => d.tagId === tagId);
+      
+      if (existingDataset) {
+        newDatasets.push(existingDataset);
+      } else {
+        const prefix = tag.type === 'register' ? 'D' : 'M';
+        
+        // Get history or pad with nulls
+        let historyData = tagHistory[tag.id] ? [...tagHistory[tag.id]] : [];
+        while (historyData.length < chartLabels.length) historyData.unshift(null);
+
+        newDatasets.push({
+          tagId: tag.id, // custom metadata
+          label: `${prefix}${tag.address} - ${tag.name}`,
+          borderColor: color,
+          backgroundColor: color + '1a', // 10% opacity
+          borderWidth: 2,
+          pointRadius: 0,
+          data: historyData,
+          tension: 0.3,
+          fill: true
+        });
+      }
+    });
+    
+    trendChart.data.datasets = newDatasets;
+    trendChart.update('none'); // Update smoothly without animation restart
+  } catch (err) {
+    console.error("[CHART_SYNC_ERR]", err);
+  }
+}
+
 function initLiveChart() {
   const ctx = document.getElementById('live-trend-chart');
   if (!ctx) return;
@@ -585,28 +677,7 @@ function initLiveChart() {
     type: 'line',
     data: {
       labels: [],
-      datasets: [
-        {
-          label: 'D100 - Evap Sıcaklığı (°C)',
-          borderColor: '#FFD300',
-          backgroundColor: 'rgba(255, 211, 0, 0.1)',
-          borderWidth: 2,
-          pointRadius: 0,
-          data: [],
-          tension: 0.3,
-          fill: true
-        },
-        {
-          label: 'D102 - Komp Basıncı (bar)',
-          borderColor: '#10B981',
-          backgroundColor: 'rgba(16, 185, 129, 0.1)',
-          borderWidth: 2,
-          pointRadius: 0,
-          data: [],
-          tension: 0.3,
-          fill: true
-        }
-      ]
+      datasets: []
     },
     options: {
       responsive: true,
@@ -636,28 +707,41 @@ function updateLiveChart(tags) {
   if (!trendChart) return;
   
   const now = Date.now();
-  // Saniyede bir kez grafik güncelleyelim, 200ms çok hızlı
+  // Saniyede bir kez grafik güncelleyelim
   if (now - lastChartUpdate < 1000) return;
   lastChartUpdate = now;
 
-  const t100 = tags.find(t => t.address === 100 && t.type === 'register');
-  const t102 = tags.find(t => t.address === 102 && t.type === 'register');
-
-  const val100 = t100 ? parseFloat(t100.value) : 0;
-  const val102 = t102 ? parseFloat(t102.value) : 0;
-
   const timeStr = new Date().toLocaleTimeString('tr-TR', { hour12: false });
-  
-  trendChart.data.labels.push(timeStr);
-  trendChart.data.datasets[0].data.push(val100);
-  trendChart.data.datasets[1].data.push(val102);
+  chartLabels.push(timeStr);
+  if (chartLabels.length > MAX_CHART_POINTS) chartLabels.shift();
 
-  // 2 dakika = 120 saniye (nokta)
-  if (trendChart.data.labels.length > 120) {
-    trendChart.data.labels.shift();
-    trendChart.data.datasets[0].data.shift();
-    trendChart.data.datasets[1].data.shift();
-  }
+  // Tüm taglerin geçmişini kaydet (arka planda buffer)
+  tags.forEach(tag => {
+    if (!tagHistory[tag.id]) {
+      tagHistory[tag.id] = Array(Math.max(0, chartLabels.length - 1)).fill(null);
+    }
+    
+    let val = 0;
+    if (tag.type === 'coil') {
+      val = (tag.value === true || tag.value === 1 || tag.value === '1' || tag.value === 'true') ? 1 : 0;
+    } else {
+      val = parseFloat(tag.value);
+      if (isNaN(val)) val = 0;
+    }
+    tagHistory[tag.id].push(val);
+    
+    if (tagHistory[tag.id].length > MAX_CHART_POINTS) {
+      tagHistory[tag.id].shift();
+    }
+  });
 
-  trendChart.update();
+  // Chart nesnesini buffer'dan güncelle
+  trendChart.data.labels = [...chartLabels];
+  trendChart.data.datasets.forEach(ds => {
+    if (tagHistory[ds.tagId]) {
+      ds.data = [...tagHistory[ds.tagId]];
+    }
+  });
+
+  trendChart.update('none'); // Akıcı çizim
 }

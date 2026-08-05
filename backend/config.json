@@ -1,7 +1,7 @@
 {
   "ip": "192.168.1.50",
   "port": 502,
-  "nextTagId": 7,
+  "nextTagId": 14,
   "tags": [
     {
       "id": 1,
@@ -45,19 +45,6 @@
       "unit": "RPM",
       "min": 0,
       "max": 3000,
-      "value": 0
-    },
-    {
-      "id": 6,
-      "name": "yeni_degisken",
-      "type": "register",
-      "dataType": "UINT16",
-      "address": 106,
-      "unit": "f",
-      "min": -50,
-      "max": 150,
-      "lowAlarm": 0,
-      "highAlarm": 100,
       "value": 0
     }
   ]

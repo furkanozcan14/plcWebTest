@@ -21,26 +21,64 @@
 <body>
 
 <!-- ═══════════════════════════════════════════
+     GLOBAL TOPBAR
+══════════════════════════════════════════════ -->
+<div id="app-topbar" class="topbar">
+  <div class="topbar-brand">
+    <div class="logo-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#090C11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="7" width="20" height="14" rx="1"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
+      </svg>
+    </div>
+    <span class="brand-badge">PLC</span>
+    <div class="brand-sep"></div>
+    <span id="topbar-brand-text">Delta Web Test Bench</span>
+  </div>
+
+  <div class="nav-tabs" id="topbar-tabs" style="display:none;">
+    <button class="nav-tab" id="nav-config">Konfigürasyon</button>
+    <button class="nav-tab" id="nav-testbench">Test Bench</button>
+  </div>
+
+  <div class="topbar-right">
+    <!-- Simülasyon badge -->
+    <div id="topbar-sim-badge" class="sim-badge" style="display:none;">
+      <i data-lucide="cpu" style="width:10px;height:10px;"></i> SIM
+    </div>
+
+    <!-- Status LED -->
+    <div class="status-led" id="topbar-status-led" style="display:none;">
+      <div class="led-dot disconnected" id="topbar-led-dot"></div>
+      <span id="topbar-status-text">DISCONNECTED</span>
+    </div>
+
+    <!-- Master START/STOP Toggle -->
+    <button id="btn-master-toggle" class="btn-master start" aria-label="Sistemi başlat" style="display:none;">
+      <i data-lucide="play" style="width:13px;height:13px;"></i>
+      <span id="master-btn-label">START</span>
+    </button>
+
+    <!-- CSV Rapor -->
+    <button id="tb-csv-btn" class="btn btn-ghost" title="Test Raporu İndir (.CSV)" style="display:none;">
+      <i data-lucide="download" style="width:14px;height:14px;"></i> CSV
+    </button>
+
+    <!-- Theme -->
+    <button id="topbar-theme-btn" class="btn-theme" title="Tema Değiştir" aria-label="Tema değiştir">
+      <i data-lucide="sun" style="width:14px;height:14px;"></i>
+    </button>
+
+    <!-- Logout -->
+    <button id="topbar-logout-btn" class="btn btn-ghost btn-sm" title="Çıkış" style="display:none;">
+      <i data-lucide="log-out" style="width:12px;height:12px;"></i>
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
      VIEW 1: LOGIN
 ══════════════════════════════════════════════ -->
 <div id="view-login" class="view active">
-  <div class="topbar">
-    <div class="topbar-brand">
-      <div class="logo-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#090C11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="7" width="20" height="14" rx="1"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
-        </svg>
-      </div>
-      <span class="brand-badge">PLC</span>
-      <div class="brand-sep"></div>
-      <span>Delta Web Test Bench</span>
-    </div>
-    <div class="topbar-right">
-      <button id="login-theme-btn" class="btn-theme" title="Tema Değiştir" aria-label="Tema değiştir">
-        <i data-lucide="sun" style="width:14px;height:14px;"></i>
-      </button>
-    </div>
-  </div>
 
   <div class="login-container">
     <div class="login-box fade-in">
@@ -51,7 +89,7 @@
               <rect x="2" y="7" width="20" height="14" rx="1"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
             </svg>
           </div>
-          <h1>Delta PLC Web Test Bench<br/><span style="font-size:11px;font-weight:400;color:var(--text-secondary);">İklimlendirme Kontrol Sistemi v1.0</span></h1>
+          <h1>Delta PLC Web Test Bench<br/><span style="font-size:13px;font-weight:400;color:var(--text-secondary);">İklimlendirme Kontrol Sistemi v1.0</span></h1>
         </div>
         <p>SCADA/HMI — Modbus TCP / Ethernet</p>
       </div>
@@ -89,34 +127,6 @@
      VIEW 2: KONFİGÜRASYON
 ══════════════════════════════════════════════ -->
 <div id="view-config" class="view">
-  <div class="topbar">
-    <div class="topbar-brand">
-      <div class="logo-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#090C11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="7" width="20" height="14" rx="1"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
-        </svg>
-      </div>
-      <span class="brand-badge">PLC</span>
-      <div class="brand-sep"></div>
-      <span>Delta Web Test Bench</span>
-    </div>
-    <div class="nav-tabs">
-      <button class="nav-tab active" id="nav-config">Konfigürasyon</button>
-      <button class="nav-tab" id="nav-testbench">Test Bench</button>
-    </div>
-    <div class="topbar-right">
-      <div class="status-led" id="config-status-led">
-        <div class="led-dot disconnected" id="config-led-dot"></div>
-        <span id="config-status-text">DISCONNECTED</span>
-      </div>
-      <button id="config-theme-btn" class="btn-theme" title="Tema Değiştir" aria-label="Tema değiştir">
-        <i data-lucide="sun" style="width:14px;height:14px;"></i>
-      </button>
-      <button id="config-logout-btn" class="btn btn-ghost btn-sm" title="Çıkış">
-        <i data-lucide="log-out" style="width:12px;height:12px;"></i>
-      </button>
-    </div>
-  </div>
 
   <div class="config-container">
     <!-- Bağlantı Paneli -->
@@ -147,7 +157,7 @@
 
         <div class="divider"></div>
 
-        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px;">
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">
           <i data-lucide="info" style="width:11px;height:11px;vertical-align:middle;"></i>
           &nbsp;Delta DVP serisi PLC, Modbus TCP Slave modunda çalışmalıdır. Bağlantı zaman aşımı: 1500ms.
         </div>
@@ -171,7 +181,7 @@
           </button>
         </div>
 
-        <div id="conn-message" style="margin-top:10px;font-size:12px;font-family:var(--font-mono);display:none;padding:6px 10px;border-radius:var(--radius-sm);"></div>
+        <div id="conn-message" style="margin-top:12px;font-size:14px;font-family:var(--font-mono);display:none;padding:8px 12px;border-radius:var(--radius-sm);"></div>
       </div>
     </div>
 
@@ -183,7 +193,7 @@
           Adres Haritası & Protokol
         </div>
       </div>
-      <div class="panel-body" style="font-size:12px;line-height:1.8;">
+      <div class="panel-body" style="font-size:14px;line-height:1.9;">
         <table style="width:100%;border-collapse:collapse;">
           <tr>
             <td style="color:var(--text-secondary);width:40%;padding:3px 0;">Protokol</td>
@@ -217,14 +227,14 @@
       </div>
     </div>
 
-    <!-- Tag Tablosu -->
-    <div class="panel full-span">
+    <!-- Tag Tablosu (Bağlantı sonrası görünür) -->
+    <div class="panel full-span" id="tag-table-panel" style="display:none;">
       <div class="panel-header">
         <div class="panel-title">
           <i data-lucide="table" style="width:13px;height:13px;color:var(--accent);"></i>
           Delta PLC Değişken Eşleme Tablosu
         </div>
-        <span style="font-size:11px;color:var(--text-muted);" id="tag-count">4 değişken</span>
+        <span style="font-size:13px;color:var(--text-muted);" id="tag-count">4 değişken</span>
       </div>
       <div class="panel-body" style="padding:0;">
         <table class="tag-table" id="tag-table">
@@ -248,9 +258,9 @@
         </table>
 
         <!-- Yeni Tag Formu (Multi-row Grid) -->
-        <div style="padding:16px 20px;border-top:1px solid var(--border);background-color:var(--bg-card);display:flex;flex-direction:column;gap:16px;">
+        <div style="padding:18px 24px;border-top:1px solid var(--border);background-color:var(--bg-card);display:flex;flex-direction:column;gap:18px;">
           <!-- SATIR 1: Temel Bilgiler -->
-          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:10px;align-items:end;">
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:12px;align-items:end;">
             <div>
               <label class="form-label">Değişken Adı</label>
               <input id="new-tag-name" class="form-input" type="text" placeholder="Örn: Kompresör Sıcaklığı" />
@@ -284,10 +294,10 @@
           <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:20px;align-items:stretch;">
             <!-- SATIR 2: Emniyet Sınırları -->
             <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);padding:10px 12px;border-radius:var(--radius-md);">
-              <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">
+              <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">
                 <i data-lucide="shield-alert" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>Emniyet Sınırları (Clamping)
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 <div>
                   <label class="form-label" style="color:var(--green);">MİN (Emniyet Alt)</label>
                   <input id="new-tag-min" class="form-input font-mono" type="number" placeholder="Örn: -50" step="any" />
@@ -301,10 +311,10 @@
 
             <!-- SATIR 3: Alarm Eşikleri -->
             <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);padding:10px 12px;border-radius:var(--radius-md);">
-              <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">
+              <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">
                 <i data-lucide="bell-ring" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>Alarm Eşikleri (High/Low)
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 <div>
                   <label class="form-label" style="color:var(--accent);">ALT ALARM</label>
                   <input id="new-tag-low-alarm" class="form-input font-mono" type="number" placeholder="Örn: 0" step="any" />
@@ -318,7 +328,7 @@
             
             <!-- EKLE BUTONU -->
             <div style="display:flex;align-items:flex-end;">
-              <button id="btn-add-tag" class="btn btn-accent" style="height:100%;padding:0 24px;font-weight:bold;font-size:13px;letter-spacing:0.5px;box-shadow: 0 4px 12px rgba(255, 211, 0, 0.2);">
+              <button id="btn-add-tag" class="btn btn-accent" style="height:100%;padding:0 28px;font-weight:bold;font-size:15px;letter-spacing:0.5px;box-shadow: 0 4px 12px rgba(255, 211, 0, 0.2);">
                 <i data-lucide="plus-circle" style="width:16px;height:16px;margin-right:6px;"></i> DEĞİŞKEN EKLE
               </button>
             </div>
@@ -333,57 +343,6 @@
      VIEW 3: CANLI TEST BENCH
 ══════════════════════════════════════════════ -->
 <div id="view-testbench" class="view">
-  <div class="topbar">
-    <div class="topbar-brand">
-      <div class="logo-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#090C11" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="7" width="20" height="14" rx="1"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
-        </svg>
-      </div>
-      <span class="brand-badge">PLC</span>
-      <div class="brand-sep"></div>
-      <span>Canlı Test Bench</span>
-    </div>
-
-    <div class="nav-tabs">
-      <button class="nav-tab" id="tb-nav-config">Konfigürasyon</button>
-      <button class="nav-tab active" id="tb-nav-testbench">Test Bench</button>
-    </div>
-
-    <div class="topbar-right">
-      <!-- Simülasyon badge -->
-      <div id="sim-badge" class="sim-badge" style="display:none;">
-        <i data-lucide="cpu" style="width:10px;height:10px;"></i> SIM
-      </div>
-
-      <!-- Status LED -->
-      <div class="status-led">
-        <div class="led-dot disconnected" id="tb-led-dot"></div>
-        <span id="tb-status-text">DISCONNECTED</span>
-      </div>
-
-      <!-- Master START/STOP Toggle -->
-      <button id="btn-master-toggle" class="btn-master start" aria-label="Sistemi başlat">
-        <i data-lucide="play" style="width:13px;height:13px;"></i>
-        <span id="master-btn-label">START</span>
-      </button>
-
-      <!-- Theme -->
-      <button id="tb-theme-btn" class="btn-theme" title="Tema Değiştir" aria-label="Tema değiştir">
-        <i data-lucide="sun" style="width:14px;height:14px;"></i>
-      </button>
-
-      <!-- CSV Rapor -->
-      <button id="tb-csv-btn" class="btn btn-ghost" title="Test Raporu İndir (.CSV)">
-        <i data-lucide="download" style="width:14px;height:14px;"></i> CSV
-      </button>
-
-      <!-- Logout -->
-      <button id="tb-logout-btn" class="btn btn-ghost btn-sm">
-        <i data-lucide="log-out" style="width:12px;height:12px;"></i>
-      </button>
-    </div>
-  </div>
 
   <div class="testbench-container">
     <div class="testbench-body">
@@ -396,8 +355,9 @@
       <div class="chart-panel">
         <div class="chart-header">
           <i data-lucide="trending-up" style="width:14px;height:14px;color:var(--accent);"></i>
-          <span style="font-weight:600;font-size:12px;">Canlı Trend Grafiği (Son 2 Dakika)</span>
+          <span style="font-weight:600;font-size:14px;">Canlı Trend Grafiği (Son 2 Dakika)</span>
         </div>
+        <div id="chart-tag-selectors" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;"></div>
         <div class="chart-container" style="position: relative; height:200px; width:100%;">
           <canvas id="live-trend-chart"></canvas>
         </div>
@@ -425,7 +385,7 @@
         </div>
         
         <!-- Çalışan Reçete Durumu -->
-        <div id="recipe-status-bar" style="display:none;background:rgba(255,211,0,0.1);border:1px solid #FFD300;padding:8px 12px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:11px;">
+        <div id="recipe-status-bar" style="display:none;background:rgba(255,211,0,0.1);border:1px solid #FFD300;padding:10px 14px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;">
           <strong style="color:#FFD300;">ÇALIŞIYOR:</strong> <span id="recipe-status-text">Adım 1/5 - D100 ayarlanıyor...</span>
         </div>
 
@@ -435,7 +395,7 @@
             <label class="form-label">Senaryo Adı</label>
             <input type="text" id="recipe-name" class="form-input" placeholder="Örn: Kompresör Kalkış Testi" style="width:100%;">
           </div>
-          <div style="font-size:12px;font-weight:bold;margin-bottom:5px;">Adımlar</div>
+          <div style="font-size:14px;font-weight:bold;margin-bottom:5px;">Adımlar</div>
           <div id="recipe-steps-container" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;"></div>
           <button id="btn-add-recipe-step" class="btn btn-sm btn-ghost" style="margin-bottom:10px;">+ Adım Ekle</button>
           <div style="display:flex;gap:5px;">
@@ -454,7 +414,7 @@
           PLC Modbus TCP Log Konsolu
         </div>
         <div style="display:flex;gap:6px;align-items:center;">
-          <span id="console-count" style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);">0 satır</span>
+          <span id="console-count" style="font-size:13px;font-family:var(--font-mono);color:var(--text-muted);">0 satır</span>
           <button id="btn-clear-console" class="btn btn-ghost btn-sm">
             <i data-lucide="trash-2" style="width:11px;height:11px;"></i> Temizle
           </button>

@@ -537,3 +537,47 @@ Tag konfig�rasyonu ekran�na \Alt Alarm (Low Limit)\ ve \�st Alarm (High Limit)\ 
 ### 7.3 CSV Test Raporu �ndirme
 Canl� izleme s�recinin belgelenmesi i�in Test Bench ekran�na CSV export butonu eklendi.
 - **��lev:** T�kland���nda sistemdeki t�m g�ncel Tag de�erleri, alarm limitleri ve durumlar� i�eren veri k�mesini \data:text/csv\ format�nda kodlayarak an�nda taray�c�dan indirir. (Dosya ad� zaman damgal�d�r).
+
+## 8. UI/UX SAHA OKUNABİLİRLİK OPTİMİZASYONU
+
+### 8.1 Global Tipografi Artışı (%25)
+Tüm UI metinleri, form etiketleri, butonlar, tablo içerikleri ve sayısal değerlerin font boyutları sahada kolay okunabilirliği sağlamak amacıyla yaklaşık %25 oranında artırıldı.
+- **Baz font:** `html { font-size: 14px }` → `16px`
+- **Canlı Değer (Value Display):** `30px` → `36px` (JetBrains Mono, Extra Bold 800)
+- **Coil Durumu:** `22px` → `26px` (ON/OFF görsel netliği)
+- **Tablo satır padding'leri:** `7px 8px` → `10px 12px`
+- **Form inputları:** `padding: 8px 10px` → `10px 12px`, `font-size: 13px` → `15px`
+
+### 8.2 Login Ekranı İyileştirmesi
+- Login kutusunun maksimum genişliği `380px` → `480px` olarak artırıldı.
+- Başlık, bildirim ve buton boyutları orantılı büyütüldü.
+- Header/body/footer padding'leri artırılarak daha ferah bir giriş deneyimi sağlandı.
+
+### 8.3 Adımlı Konfigürasyon Akışı (Stepped Flow)
+- Delta PLC Değişken Eşleme Tablosu başlangıçta `display:none` ile gizleniyor.
+- Kullanıcı "PLC Bağlan" veya "Simülasyon" butonuna tıklayıp bağlantı başarıyla sağlandığında tablo `fade-in` animasyonuyla görünür hale geliyor.
+- Bağlantı kesildiğinde tablo tekrar gizleniyor.
+- Bu mimari, operatörün IP/Port konfigürasyonuna odaklanmasını ve gereksiz alanlarla dikkatinin dağılmamasını sağlar.
+
+### 8.4 Config Panelleri Genişletme
+- `config-container` maksimum genişliği `1100px` → `1400px` olarak artırılarak geniş ekranlarda panellerin daha verimli kullanılması sağlandı.
+- Bilgi panelindeki protokol tablosu font boyutu `12px` → `14px` olarak güncellendi.
+
+## 9. FAZ 4: SABİT HEADER, DİNAMİK GRAFİK VE ASENKRON LOGLAMA (UI/UX & BACKEND REFACTOR)
+
+### 9.1 Global Sabit (Fixed) Header Mimarisi
+- Arayüzdeki (UI) sekmeler arası geçişte yaşanan görsel kaymayı (layout shift) önlemek amacıyla SPA (Single Page Application) mimarisi güçlendirildi.
+- index.html içerisindeki her görünüme ait .topbar yapıları tek bir global <div id="app-topbar"> çatısı altına toplandı.
+- CSS tarafında .topbar position: fixed yapılarak sayfanın üstüne sabitlendi, z-index yükseltildi. İçeriğin üstte kaybolmaması için görünümlere padding eklendi.
+- Kontrollerin (Master Butonlar, Sim Badge vb.) gösterim mantığı aktif sekmeye göre JavaScript (pp.js) üzerinden dinamik hale getirildi.
+
+### 9.2 Dinamik Canlı Trend Grafiği Motoru
+- Test Bench ekranındaki canlı trend grafiği statik (D100 ve D102) olmaktan çıkarıldı.
+- 	estbench.js içerisinde kullanıcıların izlemek istedikleri değişkenleri (Register) seçebilmeleri için dinamik bir **Checkbox Listesi** eklendi.
+- Chart.js dataset'leri kullanıcının anlık seçimine göre çalışma zamanında eklenecek/çıkartılacak şekilde asenkron syncChartDatasets yapısıyla güncellendi. Kullanıcı istediği sayıda değişkeni aynı grafikte eşzamanlı çizebilir.
+
+### 9.3 Asenkron Veri Loglama (RAM Buffer) Motoru
+- Daha önce sadece client-side'da oluşturulan CSV verisi, daha kararlı ve kayıpsız olan sunucu taraflı RAM tabanlı bir logger mimarisine (ackend/logger.js) taşındı.
+- Canlı okuma döngüsü (polling), her adımda veriyi RAM üzerinde biriktirir (uffer.push).
+- Sistem belleğini (Memory Leak) şişirmemek ve diske yazma (I/O) darbogazını engellemek için veriler, **her 5 saniyede bir (5000ms) asenkron olarak (non-blocking)** logs/plc_log_YYYY-MM-DD.txt dosyasına Flush (Append) edilir.
+- Kullanıcı Test Bench üzerindeki "CSV İndir" butonuna bastığında, tarayıcı sunucudaki güncel zaman serisi dosyasını (/api/download-log endpoint) indirir.

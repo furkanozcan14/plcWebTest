@@ -1,87 +1,90 @@
-# Delta PLC Tabanlı İklimlendirme Web Test Bench Standartları
+# Delta PLC Tabanli Iklimlendirme Web Test Bench Standartlari
 
-## 1. UI/UX & Tasarım Prensipleri
-- **Yapay Zeka Ürünü Gibi Durmama Kuralı:** Tasarım pazarlama amaçlı süslü bir AI web sitesi gibi DEĞİL, sahada kullanılan profesyonel bir endüstriyel SCADA / HMI kontrol paneli görünümünde olmalıdır.
-- **Kompaktlık & Yüksek Kontrast:** Aşırı boşluklar (padding/margin), büyük yumuşak köşeler (rounded-full) ve efektli gradient'lar YASAK. Ekran derli toplu, sıkı grid ve yüksek okunabilirlikte olmalıdır.
+## 1. UI/UX & Tasarim Prensipleri
+- **Yapay Zeka Urunu Gibi Durmama Kurali:** Tasarim pazarlama amacli suslu bir AI web sitesi gibi DEGIL, sahada kullanilan profesyonel bir endustriyel SCADA / HMI kontrol paneli gorunumunde olmalidir.
+- **Kompaktlik & Yuksek Kontrast:** Asiri bosluklar (padding/margin), buyuk yumusak koseler (rounded-full) ve efektli gradient'lar YASAK. Ekran derli toplu, siki grid ve yuksek okunabilirlikte olmalidir.
+- **Header & Navigasyon Sabitligi:** Ust Header paneli (Logo, Konfigurasyon ve Test Bench butonlari) `position: fixed` olarak sabitlenmeli, sayfalar veya sekmeler arasi gecislerde butonlarin yeri KESINLIKLE KAYMAMALIDIR.
 - **Renk Paleti:**
-  - Canlı Sarı: `#FFD300` (Ana aksan, aktif sekmeler, SET butonları)
-  - Derin Siyah: `#090C11` (Koyu tema arka planı, yüksek kontrastlı metinler)
-  - Koyu Kömür Gri: `#262B32` (Koyu tema kart arka planları, border'lar)
+  - Canli Sari: `#FFD300` (Ana aksan, aktif sekmeler, SET butonlari)
+  - Derin Siyah: `#090C11` (Koyu tema arka plani, yuksek kontrastli metinler)
+  - Koyu Komur Gri: `#262B32` (Koyu tema kart arka planlari, border'lar)
   - Orta Gri: `#757B81` (Pasif elemanlar, birimler, ikincil etiketler)
-  - Yeşil (`#10B981`) & Kırmızı (`#EF4444`): Master Toggle START / STOP Durumları
-  - Beyaz: `#FFFFFF` (Açık tema kart arka planları, metinler)
-- **Çift Tema (Dual Theme) Desteği:** Sağ üst köşedeki butonla Açık (Light) ve Koyu (Dark) temalar arasında dinamik geçiş yapılabilmelidir.
-- **Tipografi ve Okunabilirlik Standartları:**
-  - **Ana Font Ailesi:** `Inter`, `Roboto`, `Segoe UI`, `sans-serif` (Metinler, butonlar ve etiketler için).
-  - **Sayısal Değer & PLC Adres Fontu:** `JetBrains Mono`, `Roboto Mono`, `Consolas`, `monospace` (Tüm sayısal veriler, input alanları ve PLC adresleri için).
-  - **Saha Şartları İçin Harf Aralığı ve Ağırlık:** 
-    - Başlıklar ve Değerler: `font-bold` (Bold / Semi-Bold).
-    - Etiketler: Küçük harf yerine `UPPERCASE` (BÜYÜK HARF) ve hafif genişletilmiş harf aralığı (`tracking-wider`).
-    - Karakter Çakışması Karşıtı: Karıştırılabilecek karakterlerin (`0` ile `O`, `1` ile `l`) net ayırt edildiği açık tipografi CSS kuralları uygulanmalıdır.
+  - Yesil (`#10B981`) & Kirmizi (`#EF4444`): Master Toggle START / STOP Durumlari
+  - Beyaz: `#FFFFFF` (Acik tema kart arka planlari, metinler)
+- **Cift Tema (Dual Theme) Destegi:** Sag ust kosedeki butonla Acik (Light) ve Koyu (Dark) temalar arasinda dinamik gecis yapilabilmelidir.
+- **Tipografi ve Okunabilirlik Standartlari:**
+  - **Ana Font Ailesi:** `Inter`, `Roboto`, `Segoe UI`, `sans-serif` (Metinler, butonlar ve etiketler icin font boyutlari %20-30 oraninda buyutulerek saha okunabilirligi saglanmalidir).
+  - **Sayisal Deger & PLC Adres Fontu:** `JetBrains Mono`, `Roboto Mono`, `Consolas`, `monospace` (Tum sayisal veriler, input alanlari ve PLC adresleri icin).
+  - **Saha Sartlari Icin Harf Araligi ve Agirlik:**
+    - Basliklar ve Degerler: `font-bold` (Bold / Semi-Bold).
+    - Etiketler: Kucuk harf yerine `UPPERCASE` (BUYUK HARF) ve hafif genisletilmis harf araligi (`tracking-wider`).
+    - Karakter Caksimasi Karsiti: Karistirilabilecek karakterlerin (`0` ile `O`, `1` ile `l`) net ayirt edildigi acik tipografi CSS kurallari uygulanmalidir.
 
-## 2. Mimari ve Modül Yapısı
-Uygulama 3 ana görünümden (SPA - Single Page Application) oluşur:
-1. **Oturum Girişi (Login):** Yetkili operatör doğrulama ekranı.
-2. **Bağlantı & Konfigürasyon:** 
-   - Modbus TCP Ethernet bağlantı parametreleri: IP adresi ve değiştirilebilir Port (Varsayılan `502`, ancak PLC özel bir port dinliyorsa dinamik port girmeye uygun).
-   - Delta PLC Değişken (Tag) ve Adres Tanımlama Tablosu (Dinamik Ekle/Sil destekli).
-3. **Canlı Test Bench & Kontrol Paneli:**
-   - Anlık verilerin izlendiği ve yanındaki **SET** butonlarıyla değer enjekte edilebildiği (Holding Register / Data Write) kartlar.
-   - **ON / OFF** butonlarıyla Bit (Coil) durumunun değiştirilmesi.
+## 2. Mimari ve Modul Yapisi
+Uygulama 3 ana gorunumden (SPA - Single Page Application) olusur:
+1. **Oturum Girisi (Login):** Yetkili operator dogrulama ekrani. Kart yapisi genis, net okunabilir ve dikey dolgulari rahat tiklanabilir olmalidir.
+2. **Baglanti & Konfigurasyon (Asamali Akis - Step-by-Step Flow):**
+   - Ust Yarim: Modbus TCP Ethernet baglanti parametreleri (IP Adresi, Port) ve Adres Haritasi rehberi yer almalidir.
+   - Dynamic Flow: "PLC Baglan" veya "Simulasyon" butonuna basilip baglanti dogrulanana kadar Delta PLC Degisken Esleme Tablosu gizli veya pasif kalmali; baglanti saglandiktan sonra yumusak bir animasyonla belirmelidir.
+   - Form Duzeni: Yeni Degisken Ekleme Formu tek bir dar satir yerine; Temel Bilgiler, Emniyet Sinirlari (Min/Max) ve Alarm Esikleri (Alt/Ust Alarm) seklinde coklu satir (Multi-row Grid) yapisinda ferah gruplandirilmalidir.
+3. **Canli Test Bench & Kontrol Paneli:**
+   - Anlik verilerin izlendigi ve yanindaki **SET** butonlariyla deger enjekte edilebildigi (Holding Register / Data Write) kartlar.
+   - **ON / OFF** butonlariyla Bit (Coil) durumunun degistirilmesi.
    - Tepe barda **Master Toggle START/STOP Butonu**:
-     - Sistem dururken: Yeşil renkli **START** butonu görünür.
-     - Tıklandığında: Simülasyon başlar, buton kırmızı renkli **STOP** butonuna dönüşür.
-     - Tekrar tıklandığında: Simülasyon durur ve tekrar yeşil **START** durumuna döner.
-   - Alt tarafta canlı akan **PLC Modbus TCP Log Konsolu** (Polling: 200ms).
+     - Sistem dururken: Yesil renkli **START** butonu gorunur.
+     - Tiklandiginda: Simulasyon baslar, buton kirmizi renkli **STOP** butonuna donusur.
+     - Tekrar tiklandiginda: Simulasyon durur ve tekrar yesil **START** durumuna doner.
+   - Alt tarafta canli akan **PLC Modbus TCP Log Konsolu** (Polling: 200ms).
 
-## 3. Haberleşme & Backend Standartları
+## 3. Haberlesme & Backend Standartlari
 - **Protokol:** Delta PLC Modbus TCP (Master/Client modunda).
-- **Adres Haritası:**
-  - `D` Register'ları (D100, D102 vb.) -> Holding Register (FC3 / FC16)
+- **Adres Haritasi:**
+  - `D` Register'lari (D100, D102 vb.) -> Holding Register (FC3 / FC16)
   - `M` Relay'leri (M10, M12 vb.) -> Coil (FC1 / FC5)
-- **Canlı Veri:** Backend servisi ile Frontend arasında WebSocket (`Socket.io`) bağlantısı kurulmalı, milisaniyelik veri akışı ve log kaydı sağlanmalıdır.
+- **Canli Veri:** Backend servisi ile Frontend arasinda WebSocket (`Socket.io`) baglantisi kurulmali, milisaniyelik veri akisi ve log kaydi saglanmalidir.
 
-## 4. Güvenlik, Hata Yönetimi & Çökme Önleme (Fail-Safe)
-- **Modbus Timeout:** PLC çağrılarında max 1500ms zaman aşımı uygulanmalı; yanıt gelmezse uygulama çökmeyip `[ERR_TIMEOUT]` logu basmalı ve durumu 'DISCONNECTED' yapmalıdır.
-- **Auto-Reconnect (Otomatik Yeniden Bağlanma):** Ethernet kablosu çıkarıldığında veya hat koptuğunda backend çökmeden her 3 saniyede bir otomatik bağlanmayı denemelidir.
-- **Input Clamping & Validation:** Sayısal veri girişlerinde aralık ve veri tipi kontrolü yapılmalı, hatalı veri girişlerinde backend işlemi reddetmelidir.
-- **Fail-Safe Master STOP:** Master STOP butonuna basıldığında veya bağlantı koptuğunda kritik adresler (örneğin M10 ana bit) otomatik olarak güvenli sıfır durumına (`0` / Reset) çekilmelidir.
-- **Global Error Handler:** Node.js/Backend katmanında yakalanmayan hiçbir asenkron hata sunucunun kapanmasına (crash) neden olmamalıdır (`try-catch` ve `process.on('uncaughtException')` önlemleri).
+## 4. Guvenlik, Hata Yonetimi & Cokme Onleme (Fail-Safe)
+- **Modbus Timeout:** PLC cagrilarinda max 1500ms zaman asimi uygulanmali; yanit gelmezse uygulama cokmeyip `[ERR_TIMEOUT]` logu basmali ve durumu 'DISCONNECTED' yapmalidir.
+- **Auto-Reconnect (Otomatik Yeniden Baglanma):** Ethernet kablosu cikarildiginda veya hat koptugunda backend cokmeden her 3 saniyede bir otomatik baglanmayi denemelidir.
+- **Input Clamping & Validation:** Sayisal veri girislerinde aralik ve veri tipi kontrolu yapilmali, hatali veri girislerinde backend islemi reddetmelidir.
+- **Fail-Safe Master STOP:** Master STOP butonuna basildiginda veya baglanti koptugunda kritik adresler (ornegin M10 ana bit) otomatik olarak guvenli sifir durumuna (`0` / Reset) cekilmelidir.
+- **Global Error Handler:** Node.js/Backend katmaninda yakalanmayan hicbir asenkron hata sunucunun kapanmasina (crash) neden olmamalidir (`try-catch` ve `process.on('uncaughtException')` onlemleri).
 
-## 5. Faz 1: Gelişmiş Veri Tipleri ve Input Clamping (Emniyet Sınırları)
+## 5. Faz 1: Gelismis Veri Tipleri ve Input Clamping (Emniyet Sinirlari)
 - **Desteklenen Veri Tipleri:**
-  - `FLOAT32`: Ondalıklı ve hassas veriler için ardışık 2 adet D register'ı kullanır (IEEE 754 Big-Endians).
-  - `INT16`: Negatif değerler (soğutma dereceleri vb.) için Signed 16-bit (-32768 .. +32767).
+  - `FLOAT32`: Ondalikli ve hassas veriler icin ardisik 2 adet D register'i kullanir (IEEE 754 Big-Endians).
+  - `INT16`: Negatif degerler (sogutma dereceleri vb.) icin Signed 16-bit (-32768 .. +32767).
   - `UINT16`: Standart Unsigned 16-bit (0 .. 65535).
   - `COIL`: M bitleri (FC1/FC5).
-- **Tag Bazlı Min/Max Sınır Kontrolü (Input Clamping):**
-  - Konfigürasyon ekranında her tag için isteğe bağlı veya zorunlu Min ve Max değer sınırları tanımlanabilmelidir.
-  - **Frontend Clamping:** Kullanıcı tanımlı Min/Max sınırları dışında bir değer girdiğinde frontend uyaracak ve değeri otomatik olarak izin verilen Min veya Max sınırına sabitleyecektir (clamp).
-  - **Backend Fail-Safe Clamping:** Backend `modbusClient.js` gelen değeri PLC'ye yazmadan önce tekrar Min/Max kontrolünden geçirmeli; sınır dışı değerleri güvenli limite çekip konsola `[WARNING] Tag sınırı aşıldı, değere çekildi` uyarısı basmalıdır.
+- **Tag Bazli Min/Max Sinir Kontrolu (Input Clamping):**
+  - Konfigurasyon ekraninda her tag icin istege bagli veya zorunlu Min ve Max deger sinirlari tanimlanabilmelidir.
+  - **Frontend Clamping:** Kullanici tanimli Min/Max sinirlari disinda bir deger girdiginde frontend uyaracak ve degeri otomatik olarak izin verilen Min veya Max sinirina sabitleyecektir (clamp).
+  - **Backend Fail-Safe Clamping:** Backend `modbusClient.js` gelen degeri PLC'ye yazmadan once tekrar Min/Max kontrolunden gecirmeli; sinir disi degerleri guvenli limite cekip konsola `[WARNING] Tag siniri asildi, degere cekildi` uyarisi basmalidir.
 
+## 6. Faz 2: Performans, Veri Kaliciligi ve Dinamik Canlı Trend Grafikleri
+- **Read Bundling (Toplu Okuma):** `modbusClient.js` icinde ardisik veya yakin PLC adresleri tek bir `readHoldingRegisters` cagrisi ile toplu okunmali, Modbus paket trafigi optimize edilmelidir.
+- **Kalicı Konfigurasyon (Persistence):** IP/Port ve Tag tanimlamalari sunucu tarafinda bir JSON dosyasinda (`config.json`) saklanmali; sunucu yeniden baslatildiginda mevcut yapi korunmalidir.
+- **Dinamik Secilebilir Canli Trend Grafiği (Chart.js):**
+  - Test Bench ekraninda kullanicinin istedigi degiskenleri secebilecegi dinamik bir alan (Checkboxes / Multi-select) yer almalidir.
+  - Kullanici tek bir degiskeni veya sectigi birden fazla degiskeni ayni anda canli cizgi grafikte (Live Line Chart) zamansal degisimleriyle izleyebilmelidir.
 
-  ## 6. Faz 2: Performans, Veri Kalıcılığı ve Canlı Trend Grafikleri
-- **Read Bundling (Toplu Okuma):** `modbusClient.js` içinde ardışık veya yakın PLC adresleri tek bir `readHoldingRegisters` çağrısı ile toplu okunmalı, Modbus paket trafiği optimize edilmelidir.
-- **Kalıcı Konfigürasyon (Persistence):** IP/Port ve Tag tanımlamaları sunucu tarafında bir JSON dosyasında (`config.json`) saklanmalı; sunucu yeniden başlatıldığında mevcut yapı korunmalıdır.
-- **Canlı Trend Grafiği (Chart.js):** Test Bench ekranında seçilen register'ların (Sıcaklık/Basınç) son 1-5 dakikalık zamansal değişimini gösteren hafif bir canlı çizgi grafik (Live Chart) yer almalıdır.
+## 7. Otomatik Dokumantasyon ve Rapor Guncelleme Kuralı
+- **Proje Raporu Senkronizasyonu:** Uygulamada yapilan her yeni gelistirme, mimari degisiklik, eklenen yeni fonksiyonellik veya refactor isleminden sonra `PROJECT_REPORT.md` dosyasi OTOMATIK olarak guncellenmelidir.
+- Guncellenecek Alanlar:
+  - Eklenen yeni teknoloji veya kutuphaneler (Teknoloji Yigini bolumu).
+  - Yapilan performans optimizasyonlari ve guvenlik onlemleri.
+  - Degisen veya eklenen REST API ve Socket.io event'leri.
+  - Surum versiyonu ve son guncelleme tarihi.
 
-
-## 7. Otomatik Dökümantasyon ve Rapor Güncelleme Kuralı
-- **Proje Raporu Senkronizasyonu:** Uygulamada yapılan her yeni geliştirme, mimari değişiklik, eklenen yeni fonksiyonellik veya refactor işleminden sonra `PROJECT_REPORT.md` dosyası OTOMATİK olarak güncellenmelidir.
-- Güncellenecek Alanlar:
-  - Eklenen yeni teknoloji veya kütüphaneler (Teknoloji Yığını bölümü).
-  - Yapılan performans optimizasyonları ve güvenlik önlemleri.
-  - Değişen veya eklenen REST API ve Socket.io event'leri.
-  - Sürüm versiyonu ve son güncelleme tarihi.
-
-
-  ## 8. Faz 3: Dinamik Reçete Motoru, Akıllı Alarm Yönetimi ve CSV Dışa Aktarma
-- **Dinamik Reçete Motoru (Dynamic Test Scripting):**
-  - Başlangıçta hazır/gömülü senaryo bulunmamalıdır.
-  - Kullanıcı arayüz üzerinden adım adım (Adres, Değer, Bekleme Süresi ms) yeni test senaryoları oluşturabilmeli, bunları isimlendirip `backend/recipes.json` dosyasına kalıcı olarak kaydedebilmelidir.
-  - Kayıtlı senaryolar için Ekle (Create), Düzenle (Update), Sil (Delete) ve Çalıştır/İptal Et (Play/Abort) işlevleri sunulmalıdır.
-- **Dinamik Alarm ve Eşik Yönetimi (Alarm Management):**
-  - Eşik değerleri kodda sabit olmamalı; Tag konfigürasyon ekranında her tag için `Alt Alarm (Low Limit)` ve `Üst Alarm (High Limit)` alanları tanımlanabilmelidir.
-  - Canlı veri bu limitlerin dışına çıktığında UI kartında visual flashing (görsel yanıp sönme), sesli uyarı imkanı ve konsolda `[ALARM HIGH]` / `[ALARM LOW]` loglama yapılmalıdır.
-- **CSV Test Raporu İndirme (Data Export):**
-  - Test Bench ekranına "Test Raporu İndir (.CSV)" butonu eklenmelidir. Tıklandığında o oturumdaki canlı veri akışını ve alarm/log kayıtlarını zaman damgalı (timestamp) olarak `.csv` dosyası halinde bilgisayara indirmelidir.
+## 8. Faz 3: Dinamik Recete Motoru, Akillı Alarm Yonetimi ve Zaman Serisi Loglama
+- **Dinamik Recete Motoru (Dynamic Test Scripting):**
+  - Baslangicta hazir/gombulu senaryo bulunmamalidir (Liste bos baslar).
+  - Kullanici arayuz uzerinden adim adim (Adres, Deger, Bekleme Suresi ms) yeni test senaryolari olusturabilmeli, bunlari isimlendirip `backend/recipes.json` dosyasina kalici olarak kaydedebilmelidir.
+  - Kayitli senaryolar icin Ekle (Create), Duzenle (Update), Sil (Delete) ve Calistir/Iptal Et (Play/Abort) islevleri sunulmalidir.
+- **Dinamik Alarm ve Esik Yonetimi (Alarm Management):**
+  - Esik degerleri kodda sabit olmamali; Tag konfigurasyon ekraninda her tag icin `Alt Alarm (Low Limit)` ve `Ust Alarm (High Limit)` alanlari tanimlanabilmelidir.
+  - Canli veri bu limitlerin disina ciktiginda UI kartinda visual flashing (gorsel yanip sonme), sesli uyari imkani ve konsolda `[ALARM HIGH]` / `[ALARM LOW]` loglama yapilmalidir.
+- **Optimize Zaman Serisi Loglama ve TXT/CSV Indirme:**
+  - Canli okunan Modbus verileri sistemi yavaslatmamak adina arka planda RAM bellekte (In-memory Buffer) zaman damgali (timestamp) olarak biriktirilmelidir.
+  - Biriken veriler asenkron (async) akis ile `logs/plc_log_YYYY-MM-DD.txt` veya `.csv` dosyasina yazilmalidir.
+  - Test Bench ekranina "Canli Kayit Raporu Indir (.TXT / .CSV)" butonu eklenmeli, tiklandiginda baglanti boyunca biriken zaman serisi canlı verileri metin dosyasi olarak bilgisayara indirilmelidir.

@@ -41,6 +41,36 @@ function showView(viewName) {
       el.classList.toggle('active', v === viewName);
     }
   });
+
+  const topbarTabs = document.getElementById('topbar-tabs');
+  const topbarStatusLed = document.getElementById('topbar-status-led');
+  const masterBtn = document.getElementById('btn-master-toggle');
+  const csvBtn = document.getElementById('tb-csv-btn');
+  const logoutBtn = document.getElementById('topbar-logout-btn');
+  const topbarBrandText = document.getElementById('topbar-brand-text');
+
+  if (viewName === 'login') {
+    if (topbarTabs) topbarTabs.style.display = 'none';
+    if (topbarStatusLed) topbarStatusLed.style.display = 'none';
+    if (masterBtn) masterBtn.style.display = 'none';
+    if (csvBtn) csvBtn.style.display = 'none';
+    if (logoutBtn) logoutBtn.style.display = 'none';
+    if (topbarBrandText) topbarBrandText.textContent = 'Delta Web Test Bench';
+  } else if (viewName === 'config') {
+    if (topbarTabs) topbarTabs.style.display = 'flex';
+    if (topbarStatusLed) topbarStatusLed.style.display = 'flex';
+    if (masterBtn) masterBtn.style.display = 'none';
+    if (csvBtn) csvBtn.style.display = 'none';
+    if (logoutBtn) logoutBtn.style.display = 'inline-flex';
+    if (topbarBrandText) topbarBrandText.textContent = 'Delta Web Test Bench';
+  } else if (viewName === 'testbench') {
+    if (topbarTabs) topbarTabs.style.display = 'flex';
+    if (topbarStatusLed) topbarStatusLed.style.display = 'flex';
+    if (masterBtn) masterBtn.style.display = 'inline-flex';
+    if (csvBtn) csvBtn.style.display = 'inline-flex';
+    if (logoutBtn) logoutBtn.style.display = 'inline-flex';
+    if (topbarBrandText) topbarBrandText.textContent = 'Canlı Test Bench';
+  }
 }
 
 // ─── Global Socket.io ────────────────────────────────────────────────────────
@@ -106,13 +136,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Logout butonları
-  document.querySelectorAll('#config-logout-btn, #tb-logout-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+  const topbarLogoutBtn = document.getElementById('topbar-logout-btn');
+  if (topbarLogoutBtn) {
+    topbarLogoutBtn.addEventListener('click', () => {
       if (confirm('Sistemden çıkmak istiyor musunuz?')) {
         showView('login');
       }
     });
-  });
+  }
 
   // Başlangıç view
   showView('login');

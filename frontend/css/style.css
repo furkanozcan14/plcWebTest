@@ -87,7 +87,7 @@
 /* ─── Reset & Base ───────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { font-size: 14px; scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+html { font-size: 16px; scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
 
 body {
   font-family: var(--font-ui);
@@ -99,7 +99,7 @@ body {
 }
 
 /* ─── SPA Views ─────────────────────────────────────────────── */
-.view { display: none; min-height: 100vh; }
+.view { display: none; min-height: 100vh; padding-top: 54px; }
 .view.active { display: flex; flex-direction: column; }
 
 /* ─── Header / Topbar ───────────────────────────────────────── */
@@ -108,12 +108,14 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  height: 48px;
+  height: 54px;
   background: var(--header-bg);
   border-bottom: 1px solid var(--header-border);
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 100;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
   gap: 12px;
 }
 
@@ -121,7 +123,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.5px;
   text-transform: uppercase;
@@ -131,7 +133,7 @@ body {
 .topbar-brand .brand-badge {
   background: var(--accent);
   color: #090C11;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   padding: 2px 6px;
   border-radius: var(--radius-sm);
@@ -155,7 +157,7 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   font-family: var(--font-mono);
   color: var(--text-secondary);
@@ -190,7 +192,7 @@ body {
   border-radius: var(--radius-md);
   border: none;
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -239,7 +241,7 @@ body {
 }
 .nav-tab {
   padding: 6px 14px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   border: none;
   background: transparent;
@@ -268,7 +270,7 @@ body {
 
 .login-box {
   width: 100%;
-  max-width: 380px;
+  max-width: 480px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -277,7 +279,7 @@ body {
 }
 
 .login-header {
-  padding: 20px 24px 16px;
+  padding: 24px 30px 20px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-secondary);
 }
@@ -290,14 +292,14 @@ body {
 }
 
 .login-header h1 {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.3;
 }
 
 .login-header p {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-secondary);
   font-family: var(--font-mono);
 }
@@ -313,7 +315,7 @@ body {
   flex-shrink: 0;
 }
 
-.login-body { padding: 20px 24px; }
+.login-body { padding: 24px 30px; }
 
 .login-notice {
   background: var(--accent-dim);
@@ -321,7 +323,7 @@ body {
   border-radius: var(--radius-sm);
   padding: 8px 12px;
   margin-bottom: 16px;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--accent);
   font-family: var(--font-mono);
   display: flex;
@@ -334,7 +336,7 @@ body {
 .form-label {
   display: block;
   font-family: var(--font-ui);        /* Inter — UI label */
-  font-size: 10.5px;
+  font-size: 12.5px;
   font-weight: var(--fw-bold);        /* 700 — unmistakable even at small size */
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -344,13 +346,13 @@ body {
 
 .form-input {
   width: 100%;
-  padding: 8px 10px;
+  padding: 10px 12px;
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-family: var(--font-mono);      /* Roboto Mono — inputs hold data values */
-  font-size: 13px;
+  font-size: 15px;
   font-weight: var(--fw-medium);      /* 500 — typed content clearly visible */
   outline: none;
   transition: border-color var(--transition);
@@ -362,7 +364,7 @@ body {
 .form-input::placeholder { color: var(--text-muted); font-weight: var(--fw-normal); }
 
 .form-error {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--red);
   margin-top: 4px;
   display: none;
@@ -371,13 +373,13 @@ body {
 
 .btn-login {
   width: 100%;
-  padding: 9px;
+  padding: 12px;
   background: var(--accent);
   color: #090C11;
   border: none;
   border-radius: var(--radius-sm);
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -389,9 +391,9 @@ body {
 .btn-login:active { transform: translateY(1px); }
 
 .login-footer {
-  padding: 10px 24px;
+  padding: 12px 30px;
   border-top: 1px solid var(--border);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   font-family: var(--font-mono);
   text-align: center;
@@ -405,7 +407,7 @@ body {
   grid-template-columns: 1fr 1fr;
   grid-template-rows: auto 1fr;
   gap: 12px;
-  max-width: 1100px;
+  max-width: 1400px;
   margin: 0 auto;
   width: 100%;
 }
@@ -427,7 +429,7 @@ body {
 }
 
 .panel-title {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -463,7 +465,7 @@ body {
   background: var(--bg-secondary);
   display: flex;
   align-items: center;
-  font-size: 11px;
+  font-size: 13px;
   font-family: var(--font-mono);
   color: var(--text-secondary);
   border-right: 1px solid var(--border);
@@ -490,11 +492,11 @@ body {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  padding: 7px 14px;
+  padding: 9px 16px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
@@ -533,7 +535,7 @@ body {
 
 .btn-sm {
   padding: 4px 8px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .btn:disabled {
@@ -545,14 +547,14 @@ body {
 .tag-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .tag-table th {
-  padding: 7px 8px;
+  padding: 10px 12px;
   text-align: left;
   font-family: var(--font-ui);        /* Inter — column header is a UI label */
-  font-size: 10px;
+  font-size: 12px;
   font-weight: var(--fw-bold);        /* 700 */
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -562,11 +564,11 @@ body {
 }
 
 .tag-table td {
-  padding: 7px 8px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border);
   color: var(--text-primary);
   font-family: var(--font-ui);
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: var(--fw-medium);      /* 500 — data rows readable but not loud */
   vertical-align: middle;
 }
@@ -579,7 +581,7 @@ body {
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);      /* Roboto Mono — badge shows type code */
-  font-size: 10px;
+  font-size: 12px;
   font-weight: var(--fw-bold);        /* 700 */
   letter-spacing: 0.8px;
 }
@@ -589,7 +591,7 @@ body {
 
 .tag-addr {
   font-family: var(--font-mono);      /* JetBrains Mono / Roboto Mono */
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: var(--fw-bold);        /* 700 — address is critical info */
   color: var(--accent);
   letter-spacing: 0.3px;
@@ -608,7 +610,7 @@ body {
 
 .add-tag-form .form-input {
   padding: 6px 8px;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 /* ─── TESTBENCH VIEW ─────────────────────────────────────────── */
@@ -657,7 +659,7 @@ body {
 
 .tag-card-name {
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: var(--fw-bold);       /* Inter Bold — crisp label at small size */
   text-transform: uppercase;
   letter-spacing: 0.8px;             /* slightly wider tracking for cap labels */
@@ -669,7 +671,7 @@ body {
 /* Value display — primary numerical readout on each card */
 .value-display {
   font-family: var(--font-mono);     /* JetBrains Mono / Roboto Mono */
-  font-size: 30px;
+  font-size: 36px;
   font-weight: var(--fw-bold);       /* 700 — bold, field-readable at distance */
   color: var(--text-primary);
   line-height: 1;
@@ -691,7 +693,7 @@ body {
 
 .value-display .unit {
   font-family: 'Roboto', 'Inter', sans-serif; /* UI font for unit suffix */
-  font-size: 13px;
+  font-size: 15px;
   font-weight: var(--fw-medium);     /* 500 — present but not competing */
   color: var(--text-secondary);
   font-style: italic;                /* slight italic distinguishes unit from number */
@@ -700,7 +702,7 @@ body {
 
 .value-addr {
   font-family: var(--font-mono);     /* Roboto Mono / JetBrains Mono */
-  font-size: 11.5px;
+  font-size: 13px;
   font-weight: var(--fw-medium);     /* 500 — readable address label */
   color: var(--text-secondary);      /* upgraded from muted → secondary */
   margin-bottom: 10px;
@@ -722,7 +724,7 @@ body {
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-family: var(--font-mono);     /* Roboto Mono for typed numeric entry */
-  font-size: 13px;
+  font-size: 15px;
   font-weight: var(--fw-semibold);   /* 600 — typed value clearly visible */
   outline: none;
   transition: border-color var(--transition);
@@ -741,7 +743,7 @@ body {
   border: none;
   border-radius: var(--radius-sm);
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -766,7 +768,7 @@ body {
   align-items: center;
   gap: 8px;
   font-family: var(--font-mono);     /* JetBrains Mono — ON/OFF is a data state */
-  font-size: 22px;
+  font-size: 26px;
   font-weight: var(--fw-extrabold);  /* 800 — coil state must be unmistakable */
   letter-spacing: 1px;
 }
@@ -793,7 +795,7 @@ body {
   padding: 5px 12px;
   border: none;
   border-radius: var(--radius-sm);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.5px;
   cursor: pointer;
@@ -842,7 +844,7 @@ body {
 
 .console-title {
   font-family: var(--font-ui);        /* Inter — UI label, not data */
-  font-size: 11px;
+  font-size: 13px;
   font-weight: var(--fw-bold);        /* 700 */
   color: var(--text-primary);
   text-transform: uppercase;
@@ -864,7 +866,7 @@ body {
   overflow-y: auto;
   padding: 8px 12px;
   font-family: var(--font-mono);      /* Roboto Mono / JetBrains Mono */
-  font-size: 12px;                    /* +0.5px — better saha readability */
+  font-size: 13px;                    /* +0.5px — better saha readability */
   line-height: 1.75;
 }
 
@@ -921,7 +923,7 @@ body {
   background: var(--accent-dim);
   border: 1px solid rgba(255,211,0,0.3);
   border-radius: var(--radius-sm);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--accent);
   letter-spacing: 1px;
@@ -968,7 +970,7 @@ select.form-input {
   .cards-grid { grid-template-columns: 1fr; }
 }
 
-/* ��� CHART PANEL ���������������������������������������������� */
+/* ��� CHART PANEL ���������������������������������������������� */
 .chart-panel {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -990,7 +992,7 @@ select.form-input {
   min-height: 200px;
 }
 
-/* ��� ALARM FLASHING ������������������������������������������� */
+/* ��� ALARM FLASHING ������������������������������������������� */
 @keyframes alarm-flash {
   0% { background-color: rgba(239, 68, 68, 0.1); border-color: #EF4444; }
   50% { background-color: transparent; border-color: var(--border); }
@@ -1000,7 +1002,7 @@ select.form-input {
   animation: alarm-flash 1s infinite;
 }
 
-/* Yard�mc� S�n�flar */
+/* Yard�mc� S�n�flar */
 .font-mono {
   font-family: var(--font-mono) !important;
 }

@@ -18,6 +18,7 @@ const { ModbusClient } = require('./modbusClient');
 const FailSafeManager  = require('./failSafe');
 const { loadConfig, saveConfig } = require('./configStore');
 const { RecipeManager } = require('./recipes');
+const { DataLogger } = require('./logger');
 
 // ─── App Setup ───────────────────────────────────────────────────────────────
 const app    = express();
@@ -59,6 +60,10 @@ function broadcastLog(msg) {
 const modbusClient = new ModbusClient(broadcastLog);
 const failSafe     = new FailSafeManager(modbusClient, io, broadcastLog);
 const recipeManager = new RecipeManager(plcState, modbusClient, io, broadcastLog);
+
+// ─── Data Logger ──────────────────────────────────────────────────────────────
+const dataLogger = new DataLogger(5000); // Flush every 5 seconds
+dataLogger.start();
 
 // ─── Konfigürasyon Kaydet (tag ekleme/silme sonrası çağrılır) ─────────────────
 function persistConfig() {
@@ -155,6 +160,8 @@ async function pollPlc() {
       running:        plcState.running,
       simulationMode: true
     });
+    // Log data
+    dataLogger.append(plcState.tags, plcState.status, true);
     return;
   }
 
@@ -203,6 +210,9 @@ async function pollPlc() {
     running:        plcState.running,
     simulationMode: false
   });
+  
+  // Log data
+  dataLogger.append(plcState.tags, plcState.status, false);
 }
 
 function startPolling() {
@@ -337,9 +347,13 @@ app.post('/api/coil', async (req, res) => {
 app.post('/api/start', async (req, res) => {
   try {
     if (!plcState.running) {
+      if (!modbusClient.isConnected() && !plcState.simulationMode) {
+        return res.status(400).json({ error: 'PLC bağlı değil.' });
+      }
       plcState.running = true;
       if (plcState.simulationMode) initSimValues();
       startPolling();
+      dataLogger.start();
       broadcastLog('[MASTER] Sistem BAŞLATILDI — Durum: RUNNING');
       io.emit('plc:status', { status: plcState.status, running: true });
     }
@@ -356,6 +370,7 @@ app.post('/api/stop', async (req, res) => {
     if (plcState.running) {
       plcState.running = false;
       stopPolling();
+      dataLogger.flush();
       await failSafe.triggerFailSafe('MASTER_STOP');
       broadcastLog('[MASTER] Sistem DURDURULDU — Fail-Safe aktif.');
       io.emit('plc:status', { status: 'STOPPED', running: false });
@@ -482,6 +497,18 @@ app.get('/api/state', (req, res) => {
   });
 });
 
+// Download today's log file
+app.get('/api/download-log', (req, res) => {
+  dataLogger.flush(); // ensure everything is written
+  const filepath = dataLogger.getTodayFilename();
+  
+  if (require('fs').existsSync(filepath)) {
+    res.download(filepath); // Set headers automatically
+  } else {
+    res.status(404).send('Henüz log dosyası oluşturulmadı.');
+  }
+});
+
 // ─── Socket.io ────────────────────────────────────────────────────────────────
 io.on('connection', (socket) => {
   broadcastLog(`[WS] İstemci bağlandı: ${socket.id}`);
@@ -497,9 +524,7 @@ io.on('connection', (socket) => {
 
 // ─── Başlat ───────────────────────────────────────────────────────────────────
 server.listen(PORT, () => {
-  console.log(`\n╔══════════════════════════════════════════════════╗`);
-  console.log(`║  Delta PLC Web Test Bench — Faz 2 Hazır         ║`);
-  console.log(`║  http://localhost:${PORT}                           ║`);
-  console.log(`╚══════════════════════════════════════════════════╝\n`);
-  broadcastLog('[SERVER] Delta PLC Web Test Bench v1.2 — Faz 2 (Read Bundling + Kalıcı Config) hazır.');
+  console.log(`[SERVER] Delta PLC Web Test Bench v1.2 — Faz 4 (RAM Logger & Fixed Header) hazır.`);
+  console.log(`[SERVER] http://localhost:${PORT}`);
+  startPolling();
 });

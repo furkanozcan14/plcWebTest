@@ -202,8 +202,8 @@ function hideConnMsg() {
 
 // ─── Durum LED ────────────────────────────────────────────────────────────────
 function updateConfigStatus(status) {
-  const dot  = document.getElementById('config-led-dot');
-  const text = document.getElementById('config-status-text');
+  const dot  = document.getElementById('topbar-led-dot');
+  const text = document.getElementById('topbar-status-text');
   if (!dot || !text) return;
 
   const map = {
@@ -261,6 +261,7 @@ async function connectToPLC(simulation = false) {
       const status = data.status || (simulation ? 'SIMULATION' : 'CONNECTED');
       updateConfigStatus(status);
       setConnectionButtons(true);
+      showTagTablePanel(true);
       showConnMsg(
         simulation
           ? 'Simülasyon modu aktif — PLC bağlı olmadan test yapabilirsiniz.'
@@ -283,7 +284,21 @@ async function disconnectFromPLC() {
   try { await fetch('/api/disconnect', { method: 'POST' }); } catch (_) {}
   updateConfigStatus('DISCONNECTED');
   setConnectionButtons(false);
+  showTagTablePanel(false);
   hideConnMsg();
+}
+
+// ─── Tag Tablosu Görünürlük (Bağlantı sonrası açılır) ─────────────────────
+function showTagTablePanel(show) {
+  const panel = document.getElementById('tag-table-panel');
+  if (!panel) return;
+  if (show) {
+    panel.style.display = 'block';
+    panel.classList.add('fade-in');
+  } else {
+    panel.style.display = 'none';
+    panel.classList.remove('fade-in');
+  }
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -323,8 +338,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.plcSocket) {
       window.plcSocket.on('plc:status', (data) => {
         updateConfigStatus(data.status);
-        if (data.status === 'CONNECTED' || data.status === 'SIMULATION') setConnectionButtons(true);
-        else if (data.status === 'DISCONNECTED') setConnectionButtons(false);
+        if (data.status === 'CONNECTED' || data.status === 'SIMULATION') {
+          setConnectionButtons(true);
+          showTagTablePanel(true);
+        }
+        else if (data.status === 'DISCONNECTED') {
+          setConnectionButtons(false);
+          showTagTablePanel(false);
+        }
       });
     }
   }, 500);
