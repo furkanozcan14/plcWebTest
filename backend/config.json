@@ -1,7 +1,7 @@
 {
   "ip": "192.168.1.50",
   "port": 502,
-  "nextTagId": 6,
+  "nextTagId": 7,
   "tags": [
     {
       "id": 1,
@@ -12,6 +12,8 @@
       "unit": "°C",
       "min": -50,
       "max": 150,
+      "lowAlarm": 0,
+      "highAlarm": 100,
       "value": 0
     },
     {
@@ -46,14 +48,16 @@
       "value": 0
     },
     {
-      "id": 5,
-      "name": "sdafsdaf",
+      "id": 6,
+      "name": "yeni_degisken",
       "type": "register",
       "dataType": "UINT16",
-      "address": 400,
-      "unit": "a",
-      "min": 100,
-      "max": 500,
+      "address": 106,
+      "unit": "f",
+      "min": -50,
+      "max": 150,
+      "lowAlarm": 0,
+      "highAlarm": 100,
       "value": 0
     }
   ]

@@ -17,6 +17,7 @@ const path     = require('path');
 const { ModbusClient } = require('./modbusClient');
 const FailSafeManager  = require('./failSafe');
 const { loadConfig, saveConfig } = require('./configStore');
+const { RecipeManager } = require('./recipes');
 
 // ─── App Setup ───────────────────────────────────────────────────────────────
 const app    = express();
@@ -54,9 +55,10 @@ function broadcastLog(msg) {
   io.emit('plc:log', { message: entry, timestamp: new Date().toISOString() });
 }
 
-// ─── Modbus & FailSafe ────────────────────────────────────────────────────────
+// ─── Modbus, FailSafe & Recipes ───────────────────────────────────────────────
 const modbusClient = new ModbusClient(broadcastLog);
 const failSafe     = new FailSafeManager(modbusClient, io, broadcastLog);
+const recipeManager = new RecipeManager(plcState, modbusClient, io, broadcastLog);
 
 // ─── Konfigürasyon Kaydet (tag ekleme/silme sonrası çağrılır) ─────────────────
 function persistConfig() {
@@ -133,6 +135,8 @@ function serializeTag(t) {
     unit:     t.unit,
     min:      t.min,
     max:      t.max,
+    lowAlarm: t.lowAlarm,
+    highAlarm:t.highAlarm,
     value:    t.value
   };
 }
@@ -170,7 +174,17 @@ async function pollPlc() {
     for (const res of results) {
       if (res.success) {
         const tag = plcState.tags.find(t => t.id === res.id);
-        if (tag) tag.value = res.value;
+        if (tag) {
+          tag.value = res.value;
+          
+          // Alarm Kontrolü
+          if (tag.lowAlarm !== undefined && tag.value <= tag.lowAlarm) {
+            broadcastLog(`[ALARM LOW] "${tag.name}" değeri alt sınırın altında: ${tag.value} (Limit: ${tag.lowAlarm})`);
+          }
+          if (tag.highAlarm !== undefined && tag.value >= tag.highAlarm) {
+            broadcastLog(`[ALARM HIGH] "${tag.name}" değeri üst sınırın üstünde: ${tag.value} (Limit: ${tag.highAlarm})`);
+          }
+        }
       } else if (res.error === 'NOT_CONNECTED') {
         plcState.status = 'DISCONNECTED';
         if (!failSafe.isReconnecting) failSafe.startReconnect(plcState.ip, plcState.port);
@@ -356,7 +370,7 @@ app.post('/api/stop', async (req, res) => {
 // Tag ekle — Faz 2: persistConfig çağrısı eklendi
 app.post('/api/tags', (req, res) => {
   try {
-    const { name, type, dataType, address, unit, min, max } = req.body;
+    const { name, type, dataType, address, unit, min, max, lowAlarm, highAlarm } = req.body;
     if (!name || !type || address === undefined) {
       return res.status(400).json({ success: false, error: 'name, type ve address gerekli.' });
     }
@@ -369,6 +383,8 @@ app.post('/api/tags', (req, res) => {
       unit:     unit || '',
       min:      min !== undefined && min !== '' ? parseFloat(min) : undefined,
       max:      max !== undefined && max !== '' ? parseFloat(max) : undefined,
+      lowAlarm: lowAlarm !== undefined && lowAlarm !== '' ? parseFloat(lowAlarm) : undefined,
+      highAlarm: highAlarm !== undefined && highAlarm !== '' ? parseFloat(highAlarm) : undefined,
       value:    0
     };
     plcState.tags.push(newTag);
@@ -396,6 +412,59 @@ app.delete('/api/tags/:id', (req, res) => {
 
     broadcastLog(`[CONFIG] Tag silindi: ${removed.name} → config.json güncellendi`);
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── Recipes API ──────────────────────────────────────────────────────────────
+app.get('/api/recipes', (req, res) => {
+  res.json({ success: true, recipes: recipeManager.getRecipes() });
+});
+
+app.post('/api/recipes', (req, res) => {
+  try {
+    const recipe = recipeManager.addRecipe(req.body);
+    res.json({ success: true, recipe });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/api/recipes/:id', (req, res) => {
+  try {
+    const recipe = recipeManager.updateRecipe(req.params.id, req.body);
+    if (!recipe) return res.status(404).json({ success: false, error: 'Reçete bulunamadı.' });
+    res.json({ success: true, recipe });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/recipes/:id', (req, res) => {
+  try {
+    const success = recipeManager.deleteRecipe(req.params.id);
+    if (!success) return res.status(404).json({ success: false, error: 'Reçete bulunamadı.' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/recipes/:id/run', (req, res) => {
+  try {
+    // Fire and forget, runs async
+    recipeManager.runRecipe(req.params.id).catch(() => {}); 
+    res.json({ success: true, message: 'Reçete başlatıldı.' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/recipes/stop', (req, res) => {
+  try {
+    recipeManager.stopRecipe();
+    res.json({ success: true, message: 'Reçete durduruldu.' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

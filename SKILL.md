@@ -73,3 +73,15 @@ Uygulama 3 ana görünümden (SPA - Single Page Application) oluşur:
   - Yapılan performans optimizasyonları ve güvenlik önlemleri.
   - Değişen veya eklenen REST API ve Socket.io event'leri.
   - Sürüm versiyonu ve son güncelleme tarihi.
+
+
+  ## 8. Faz 3: Dinamik Reçete Motoru, Akıllı Alarm Yönetimi ve CSV Dışa Aktarma
+- **Dinamik Reçete Motoru (Dynamic Test Scripting):**
+  - Başlangıçta hazır/gömülü senaryo bulunmamalıdır.
+  - Kullanıcı arayüz üzerinden adım adım (Adres, Değer, Bekleme Süresi ms) yeni test senaryoları oluşturabilmeli, bunları isimlendirip `backend/recipes.json` dosyasına kalıcı olarak kaydedebilmelidir.
+  - Kayıtlı senaryolar için Ekle (Create), Düzenle (Update), Sil (Delete) ve Çalıştır/İptal Et (Play/Abort) işlevleri sunulmalıdır.
+- **Dinamik Alarm ve Eşik Yönetimi (Alarm Management):**
+  - Eşik değerleri kodda sabit olmamalı; Tag konfigürasyon ekranında her tag için `Alt Alarm (Low Limit)` ve `Üst Alarm (High Limit)` alanları tanımlanabilmelidir.
+  - Canlı veri bu limitlerin dışına çıktığında UI kartında visual flashing (görsel yanıp sönme), sesli uyarı imkanı ve konsolda `[ALARM HIGH]` / `[ALARM LOW]` loglama yapılmalıdır.
+- **CSV Test Raporu İndirme (Data Export):**
+  - Test Bench ekranına "Test Raporu İndir (.CSV)" butonu eklenmelidir. Tıklandığında o oturumdaki canlı veri akışını ve alarm/log kayıtlarını zaman damgalı (timestamp) olarak `.csv` dosyası halinde bilgisayara indirmelidir.

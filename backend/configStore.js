@@ -70,6 +70,8 @@ function saveConfig(cfg) {
         unit:     t.unit  || '',
         min:      t.min,
         max:      t.max,
+        lowAlarm: t.lowAlarm,
+        highAlarm:t.highAlarm,
         value:    0        // runtime değeri kaydetme
       }))
     };

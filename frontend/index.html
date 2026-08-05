@@ -237,6 +237,8 @@
               <th>Birim</th>
               <th style="color:var(--green);">Min</th>
               <th style="color:var(--red);">Max</th>
+              <th style="color:var(--text-secondary);">Alt Alarm</th>
+              <th style="color:var(--text-secondary);">Üst Alarm</th>
               <th>İşlem</th>
             </tr>
           </thead>
@@ -245,9 +247,10 @@
           </tbody>
         </table>
 
-        <!-- Yeni Tag Formu (Faz 1: Veri Tipi + Min/Max) -->
-        <div style="padding:10px 14px;border-top:1px solid var(--border);">
-          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 0.7fr 0.7fr 0.7fr auto;gap:6px;align-items:end;">
+        <!-- Yeni Tag Formu (Multi-row Grid) -->
+        <div style="padding:16px 20px;border-top:1px solid var(--border);background-color:var(--bg-card);display:flex;flex-direction:column;gap:16px;">
+          <!-- SATIR 1: Temel Bilgiler -->
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:10px;align-items:end;">
             <div>
               <label class="form-label">Değişken Adı</label>
               <input id="new-tag-name" class="form-input" type="text" placeholder="Örn: Kompresör Sıcaklığı" />
@@ -270,24 +273,53 @@
             </div>
             <div>
               <label class="form-label">Adres</label>
-              <input id="new-tag-address" class="form-input" type="number" placeholder="106" min="0" />
+              <input id="new-tag-address" class="form-input" type="number" placeholder="Örn: 106" min="0" />
             </div>
             <div>
               <label class="form-label">Birim</label>
-              <input id="new-tag-unit" class="form-input" type="text" placeholder="°C / bar" />
+              <input id="new-tag-unit" class="form-input" type="text" placeholder="Örn: °C / bar" />
             </div>
-            <div>
-              <label class="form-label" style="color:var(--green);">Min</label>
-              <input id="new-tag-min" class="form-input" type="number" placeholder="—" step="any" />
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:20px;align-items:stretch;">
+            <!-- SATIR 2: Emniyet Sınırları -->
+            <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);padding:10px 12px;border-radius:var(--radius-md);">
+              <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">
+                <i data-lucide="shield-alert" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>Emniyet Sınırları (Clamping)
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div>
+                  <label class="form-label" style="color:var(--green);">MİN (Emniyet Alt)</label>
+                  <input id="new-tag-min" class="form-input font-mono" type="number" placeholder="Örn: -50" step="any" />
+                </div>
+                <div>
+                  <label class="form-label" style="color:var(--red);">MAX (Emniyet Üst)</label>
+                  <input id="new-tag-max" class="form-input font-mono" type="number" placeholder="Örn: 150" step="any" />
+                </div>
+              </div>
             </div>
-            <div>
-              <label class="form-label" style="color:var(--red);">Max</label>
-              <input id="new-tag-max" class="form-input" type="number" placeholder="—" step="any" />
+
+            <!-- SATIR 3: Alarm Eşikleri -->
+            <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);padding:10px 12px;border-radius:var(--radius-md);">
+              <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">
+                <i data-lucide="bell-ring" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>Alarm Eşikleri (High/Low)
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div>
+                  <label class="form-label" style="color:var(--accent);">ALT ALARM</label>
+                  <input id="new-tag-low-alarm" class="form-input font-mono" type="number" placeholder="Örn: 0" step="any" />
+                </div>
+                <div>
+                  <label class="form-label" style="color:var(--accent);">ÜST ALARM</label>
+                  <input id="new-tag-high-alarm" class="form-input font-mono" type="number" placeholder="Örn: 100" step="any" />
+                </div>
+              </div>
             </div>
+            
+            <!-- EKLE BUTONU -->
             <div style="display:flex;align-items:flex-end;">
-              <button id="btn-add-tag" class="btn btn-accent">
-                <i data-lucide="plus" style="width:12px;height:12px;"></i>
-                Ekle
+              <button id="btn-add-tag" class="btn btn-accent" style="height:100%;padding:0 24px;font-weight:bold;font-size:13px;letter-spacing:0.5px;box-shadow: 0 4px 12px rgba(255, 211, 0, 0.2);">
+                <i data-lucide="plus-circle" style="width:16px;height:16px;margin-right:6px;"></i> DEĞİŞKEN EKLE
               </button>
             </div>
           </div>
@@ -341,6 +373,11 @@
         <i data-lucide="sun" style="width:14px;height:14px;"></i>
       </button>
 
+      <!-- CSV Rapor -->
+      <button id="tb-csv-btn" class="btn btn-ghost" title="Test Raporu İndir (.CSV)">
+        <i data-lucide="download" style="width:14px;height:14px;"></i> CSV
+      </button>
+
       <!-- Logout -->
       <button id="tb-logout-btn" class="btn btn-ghost btn-sm">
         <i data-lucide="log-out" style="width:12px;height:12px;"></i>
@@ -363,6 +400,48 @@
         </div>
         <div class="chart-container" style="position: relative; height:200px; width:100%;">
           <canvas id="live-trend-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Faz 3: Reçete Motoru Paneli -->
+      <div class="recipe-panel" style="margin-top:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:8px;font-weight:bold;color:var(--text-primary);">
+            <i data-lucide="list-video" style="width:14px;height:14px;color:var(--accent);"></i>
+            Test Senaryosu (Reçete) Motoru
+          </div>
+          <button id="btn-new-recipe" class="btn btn-sm btn-ghost">
+            <i data-lucide="plus" style="width:12px;height:12px;"></i> Yeni Senaryo
+          </button>
+        </div>
+        
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">
+          <select id="recipe-select" class="form-input" style="flex:1;">
+            <option value="">-- Senaryo Seçin --</option>
+          </select>
+          <button id="btn-run-recipe" class="btn btn-accent btn-sm">Çalıştır</button>
+          <button id="btn-stop-recipe" class="btn btn-danger btn-sm" disabled>İptal</button>
+          <button id="btn-delete-recipe" class="btn btn-ghost btn-sm" style="color:var(--red);">Sil</button>
+        </div>
+        
+        <!-- Çalışan Reçete Durumu -->
+        <div id="recipe-status-bar" style="display:none;background:rgba(255,211,0,0.1);border:1px solid #FFD300;padding:8px 12px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:11px;">
+          <strong style="color:#FFD300;">ÇALIŞIYOR:</strong> <span id="recipe-status-text">Adım 1/5 - D100 ayarlanıyor...</span>
+        </div>
+
+        <!-- Yeni/Düzenle Reçete Formu (Gizli) -->
+        <div id="recipe-form-container" style="display:none;margin-top:15px;border-top:1px dashed var(--border);padding-top:15px;">
+          <div style="margin-bottom:10px;">
+            <label class="form-label">Senaryo Adı</label>
+            <input type="text" id="recipe-name" class="form-input" placeholder="Örn: Kompresör Kalkış Testi" style="width:100%;">
+          </div>
+          <div style="font-size:12px;font-weight:bold;margin-bottom:5px;">Adımlar</div>
+          <div id="recipe-steps-container" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;"></div>
+          <button id="btn-add-recipe-step" class="btn btn-sm btn-ghost" style="margin-bottom:10px;">+ Adım Ekle</button>
+          <div style="display:flex;gap:5px;">
+            <button id="btn-save-recipe" class="btn btn-sm btn-accent">Kaydet</button>
+            <button id="btn-cancel-recipe" class="btn btn-sm btn-ghost">Vazgeç</button>
+          </div>
         </div>
       </div>
     </div>
@@ -395,6 +474,7 @@
 <script src="js/app.js"></script>
 <script src="js/login.js"></script>
 <script src="js/config.js"></script>
+<script src="js/recipes.js"></script>
 <script src="js/testbench.js"></script>
 
 <script>

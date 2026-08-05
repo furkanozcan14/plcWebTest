@@ -989,3 +989,18 @@ select.form-input {
 .chart-container {
   min-height: 200px;
 }
+
+/* ¦¦¦ ALARM FLASHING ¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦ */
+@keyframes alarm-flash {
+  0% { background-color: rgba(239, 68, 68, 0.1); border-color: #EF4444; }
+  50% { background-color: transparent; border-color: var(--border); }
+  100% { background-color: rgba(239, 68, 68, 0.1); border-color: #EF4444; }
+}
+.card-alarm {
+  animation: alarm-flash 1s infinite;
+}
+
+/* Yardýmcý Sýnýflar */
+.font-mono {
+  font-family: var(--font-mono) !important;
+}

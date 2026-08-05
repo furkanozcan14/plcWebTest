@@ -290,6 +290,7 @@ function renderCards(tags) {
       card.dataset.tagId = tag.id;
       card.innerHTML = buildCardHTML(tag);
       grid.appendChild(card);
+      updateCard(tag); // To apply alarm styles immediately if needed
     }
     existingCards.delete(tag.id);
   });
@@ -320,6 +321,20 @@ function updateCard(tag) {
     if (text)  { text.className = `coil-state-text ${isOn ? 'on' : 'off'}`; text.textContent = isOn ? 'ON' : 'OFF'; }
     if (onBtn) onBtn.classList.toggle('active', isOn);
     if (offBtn)offBtn.classList.toggle('active', !isOn);
+  }
+
+  // Faz 3: Alarm Görsel Uyarısı
+  const cardEl = document.querySelector(`[data-tag-id="${tag.id}"]`);
+  if (cardEl) {
+    let isAlarm = false;
+    if (tag.lowAlarm !== undefined && tag.lowAlarm !== null && tag.value <= tag.lowAlarm) isAlarm = true;
+    if (tag.highAlarm !== undefined && tag.highAlarm !== null && tag.value >= tag.highAlarm) isAlarm = true;
+    
+    if (isAlarm) {
+      cardEl.classList.add('card-alarm');
+    } else {
+      cardEl.classList.remove('card-alarm');
+    }
   }
 }
 
@@ -472,6 +487,10 @@ function clearConsole() {
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-master-toggle')?.addEventListener('click', handleMasterToggle);
   document.getElementById('btn-clear-console')?.addEventListener('click', clearConsole);
+  
+  // CSV Export Event
+  document.getElementById('tb-csv-btn')?.addEventListener('click', exportCSV);
+
   attachCardEvents();
 
   fetch('/api/state')
@@ -518,7 +537,40 @@ function bindSocketEvents(socket) {
     consoleLog(data.message || data);
   });
 
+  if (window.initRecipeSocket) {
+    initRecipeSocket(socket);
+  }
+
   consoleLog('[WS] WebSocket bağlantısı kuruldu — Canlı veri akışı başladı.');
+}
+
+// ─── CSV Rapor İndirme ────────────────────────────────────────────────────────
+function exportCSV() {
+  if (tbState.tags.length === 0) {
+    alert("Dışa aktarılacak tag bulunamadı.");
+    return;
+  }
+  
+  let csvContent = "data:text/csv;charset=utf-8,";
+  
+  // Başlıklar
+  csvContent += "ID,Isim,Tip,Data_Tipi,Adres,Deger,Birim,Alt_Alarm,Ust_Alarm\r\n";
+  
+  // Veriler
+  tbState.tags.forEach(tag => {
+    const minAlarm = tag.lowAlarm !== undefined ? tag.lowAlarm : "";
+    const maxAlarm = tag.highAlarm !== undefined ? tag.highAlarm : "";
+    const row = `${tag.id},"${tag.name}",${tag.type},${tag.dataType},${tag.address},${tag.value},${tag.unit},${minAlarm},${maxAlarm}`;
+    csvContent += row + "\r\n";
+  });
+  
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `PLC_Test_Raporu_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 // ─── Chart.js (Canlı Trend Grafiği) ──────────────────────────────────────────

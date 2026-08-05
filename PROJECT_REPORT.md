@@ -520,3 +520,20 @@ PLC baÄŸlantÄ±sÄ± olmaksÄ±zÄ±n arayÃ¼zÃ¼ test etmek iÃ§in Config ekranÄ±ndaki "S
 ---
 
 *Bu belge proje geliÅŸtirme sÃ¼reci tamamlandÄ±ktan sonra oluÅŸturulmuÅŸtur. Kod referanslarÄ± `backend/` ve `frontend/` dizinlerindeki gÃ¼ncel dosyalarla birebir Ã¶rtÃ¼ÅŸmektedir.*
+
+## 7. FAZ 3 YENİLİKLERİ: REÇETE, ALARM VE CSV
+
+### 7.1 Dinamik Reçete Motoru (Test Senaryoları)
+Kullanıcıların sahada çalışacak adım adım senaryoları tasarlaması için geliştirildi.
+- **Mimari:** Backend'de \ecipes.js\ modülü eklendi. Reçeteler \ackend/recipes.json\ dosyasında kalıcı olarak saklanır.
+- **Yürütme:** Kullanıcı Test Bench ekranından bir senaryoyu seçip çalıştırdığında, Node.js backend adım adım tag değerlerini PLC'ye yazar (SET işlemi) ve belirtilen bekleme süresi kadar asenkron bekler. Socket.io üzerinden \ecipe:status\ eventi ile frontend'e anlık adım bilgisi iletilir.
+- **API Endpoint'leri:** \/api/recipes\ (GET/POST/PUT/DELETE) ve \/api/recipes/:id/run\, \/api/recipes/stop\.
+
+### 7.2 Akıllı Alarm Yönetimi
+Tag konfigürasyonu ekranına \Alt Alarm (Low Limit)\ ve \Üst Alarm (High Limit)\ alanları eklendi. Bu eşikler \config.json\ dosyasında saklanır.
+- **Backend Loglama:** \modbusClient\ üzerinden okunan değer limit dışına çıktığında konsola \[ALARM HIGH]\ veya \[ALARM LOW]\ logları düşer.
+- **Görsel Uyarı:** Test Bench ekranındaki kartlarda, limit aşımı durumunda CSS keyframes kullanılarak kırmızı renkte yanıp sönme (flashing) efekti (\.card-alarm\) tetiklenir.
+
+### 7.3 CSV Test Raporu İndirme
+Canlı izleme sürecinin belgelenmesi için Test Bench ekranına CSV export butonu eklendi.
+- **İşlev:** Tıklandığında sistemdeki tüm güncel Tag değerleri, alarm limitleri ve durumları içeren veri kümesini \data:text/csv\ formatında kodlayarak anında tarayıcıdan indirir. (Dosya adı zaman damgalıdır).

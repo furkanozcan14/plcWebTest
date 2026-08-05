@@ -9,10 +9,10 @@ const DATA_TYPES = ['FLOAT32', 'INT16', 'UINT16', 'COIL'];
 
 // ─── Yerel tag listesi (Faz 1: dataType, min, max ile genişletildi) ───────────
 let localTags = [
-  { id: 1, name: 'Evaporatör Sıcaklığı', type: 'register', dataType: 'FLOAT32', address: 100, unit: '°C',  min: -50,  max: 150,  value: 0 },
-  { id: 2, name: 'Kompresör Basıncı',    type: 'register', dataType: 'INT16',   address: 102, unit: 'bar', min: 0,    max: 50,   value: 0 },
-  { id: 3, name: 'Sıvı Vana Durumu',     type: 'coil',     dataType: 'COIL',    address: 10,  unit: '',    min: undefined, max: undefined, value: 0 },
-  { id: 4, name: 'Fan Hızı',             type: 'register', dataType: 'UINT16',  address: 104, unit: 'RPM', min: 0,    max: 3000, value: 0 },
+  { id: 1, name: 'Evaporatör Sıcaklığı', type: 'register', dataType: 'FLOAT32', address: 100, unit: '°C',  min: -50,  max: 150,  lowAlarm: 0, highAlarm: 100, value: 0 },
+  { id: 2, name: 'Kompresör Basıncı',    type: 'register', dataType: 'INT16',   address: 102, unit: 'bar', min: 0,    max: 50,   lowAlarm: undefined, highAlarm: undefined, value: 0 },
+  { id: 3, name: 'Sıvı Vana Durumu',     type: 'coil',     dataType: 'COIL',    address: 10,  unit: '',    min: undefined, max: undefined, lowAlarm: undefined, highAlarm: undefined, value: 0 },
+  { id: 4, name: 'Fan Hızı',             type: 'register', dataType: 'UINT16',  address: 104, unit: 'RPM', min: 0,    max: 3000, lowAlarm: undefined, highAlarm: undefined, value: 0 },
 ];
 let nextId = 5;
 
@@ -43,6 +43,8 @@ function renderTagTable() {
     const prefix = tag.type === 'register' ? 'D' : 'M';
     const minStr = tag.min !== undefined ? tag.min : '—';
     const maxStr = tag.max !== undefined ? tag.max : '—';
+    const lowAlarmStr = tag.lowAlarm !== undefined ? tag.lowAlarm : '—';
+    const highAlarmStr = tag.highAlarm !== undefined ? tag.highAlarm : '—';
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -53,6 +55,8 @@ function renderTagTable() {
       <td style="color:var(--text-secondary);font-family:var(--font-mono);">${escapeHtml(tag.unit)}</td>
       <td style="font-family:var(--font-mono);font-size:11px;color:var(--green);">${minStr}</td>
       <td style="font-family:var(--font-mono);font-size:11px;color:var(--red);">${maxStr}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);">${lowAlarmStr}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);">${highAlarmStr}</td>
       <td>
         <button class="btn btn-danger btn-sm" data-delete-id="${tag.id}" title="Bu tag'i sil">
           <i data-lucide="trash-2" style="width:11px;height:11px;pointer-events:none;"></i>
@@ -110,6 +114,8 @@ async function addTag() {
   const unitEl     = document.getElementById('new-tag-unit');
   const minEl      = document.getElementById('new-tag-min');
   const maxEl      = document.getElementById('new-tag-max');
+  const lowAlarmEl = document.getElementById('new-tag-low-alarm');
+  const highAlarmEl= document.getElementById('new-tag-high-alarm');
 
   const name     = nameEl.value.trim();
   const type     = typeEl.value;              // 'register' | 'coil'
@@ -118,8 +124,13 @@ async function addTag() {
   const unit     = unitEl.value.trim();
   const minRaw   = minEl.value.trim();
   const maxRaw   = maxEl.value.trim();
+  const lowRaw   = lowAlarmEl.value.trim();
+  const highRaw  = highAlarmEl.value.trim();
+  
   const min      = minRaw !== '' ? parseFloat(minRaw) : undefined;
   const max      = maxRaw !== '' ? parseFloat(maxRaw) : undefined;
+  const lowAlarm = lowRaw !== '' ? parseFloat(lowRaw) : undefined;
+  const highAlarm= highRaw !== '' ? parseFloat(highRaw) : undefined;
 
   // Validasyonlar
   if (!name) { nameEl.focus(); showConnMsg('Değişken adı gereklidir.', 'error'); return; }
@@ -135,14 +146,14 @@ async function addTag() {
     return;
   }
 
-  const newTag = { id: nextId++, name, type, dataType, address, unit, min, max, value: 0 };
+  const newTag = { id: nextId++, name, type, dataType, address, unit, min, max, lowAlarm, highAlarm, value: 0 };
 
   // Backend'e bildir
   try {
     const res = await fetch('/api/tags', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, type, dataType, address, unit, min, max })
+      body: JSON.stringify({ name, type, dataType, address, unit, min, max, lowAlarm, highAlarm })
     });
     const data = await res.json();
     if (data.success && data.tag) newTag.id = data.tag.id;
@@ -157,6 +168,8 @@ async function addTag() {
   unitEl.value = '';
   minEl.value = '';
   maxEl.value = '';
+  lowAlarmEl.value = '';
+  highAlarmEl.value = '';
   nameEl.focus();
 
   showConnMsg(`"${name}" (${dataType}) başarıyla eklendi.`, 'success');
